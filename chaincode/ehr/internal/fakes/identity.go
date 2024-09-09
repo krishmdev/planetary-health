@@ -62,5 +62,5 @@ type Context struct {
 	Identity *Identity
 }
 
-func (c *Context) GetStub() shim.ChaincodeStubInterface { return c.Stub }
+func (c *Context) GetStub() shim.ChaincodeStubInterface  { return c.Stub }
 func (c *Context) GetClientIdentity() cid.ClientIdentity { return c.Identity }

@@ -73,8 +73,8 @@ func (s *Stub) EndTx() {
 
 func (s *Stub) Now() time.Time { return s.txTime }
 
-func (s *Stub) GetTxID() string        { return s.txID }
-func (s *Stub) GetChannelID() string   { return "ehrchannel" }
+func (s *Stub) GetTxID() string      { return s.txID }
+func (s *Stub) GetChannelID() string { return "ehrchannel" }
 func (s *Stub) GetTxTimestamp() (*timestamppb.Timestamp, error) {
 	return timestamppb.New(s.txTime), nil
 }
