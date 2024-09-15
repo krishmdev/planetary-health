@@ -1,0 +1,44 @@
+# Scale-to-zero front door for the two org gateways. Mode and timeouts can be overridden with
+# ACTIVATOR_MODE / ACTIVATOR_IDLE_TIMEOUT / ACTIVATOR_PEER_IDLE_TIMEOUT.
+admin_listen: ":8090"
+docker_socket: /var/run/docker.sock
+mode: api            # always_on | api | full
+strategy: stop       # stop | pause (applies to the API containers)
+idle_timeout: 60s
+peer_idle_timeout: 300s
+wake_timeout: 90s
+max_concurrent_wakes: 4
+queue_limit: 256
+login_burst: 5
+login_per_second: 0.5
+
+apis:
+  - name: org1-api
+    listen: ":8080"
+    upstream: http://planetary-org1-api:8080
+    container: planetary-org1-api
+    readiness: http://planetary-org1-api:8080/readyz
+    group: ehrchannel
+    jwt: { issuer: planetary-health/org1, audience: org1-api, secret_env: ORG1_JWT_SECRET }
+  - name: org2-api
+    listen: ":8081"
+    upstream: http://planetary-org2-api:8080
+    container: planetary-org2-api
+    readiness: http://planetary-org2-api:8080/readyz
+    group: ehrchannel
+    jwt: { issuer: planetary-health/org2, audience: org2-api, secret_env: ORG2_JWT_SECRET }
+
+# MAJORITY of Org1 and Org2 means both peers endorse every write, so in full mode a request to
+# either API wakes both peers and their chaincode containers.
+groups:
+  ehrchannel:
+    channel: ehrchannel
+    peers:
+      - name: peer0.org1
+        container: peer0.org1.example.com
+        ops: http://peer0.org1.example.com:9444
+        chaincode_prefix: dev-peer0.org1.example.com-ehr
+      - name: peer0.org2
+        container: peer0.org2.example.com
+        ops: http://peer0.org2.example.com:9445
+        chaincode_prefix: dev-peer0.org2.example.com-ehr
