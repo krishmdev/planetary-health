@@ -50,8 +50,8 @@ func (e *countingEngine) Start(context.Context, string) error {
 	return nil
 }
 func (e *countingEngine) Stop(context.Context, string, time.Duration) error { return nil }
-func (e *countingEngine) Pause(context.Context, string) error                { return nil }
-func (e *countingEngine) Unpause(context.Context, string) error              { return nil }
+func (e *countingEngine) Pause(context.Context, string) error               { return nil }
+func (e *countingEngine) Unpause(context.Context, string) error             { return nil }
 func (e *countingEngine) ListByPrefix(context.Context, string) ([]string, error) {
 	return nil, nil
 }

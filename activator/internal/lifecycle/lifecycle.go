@@ -106,7 +106,7 @@ func New(cfg *config.Config, eng engine.Engine, probe readiness.Prober, met *met
 
 // SetClock and SetPoll exist for tests.
 func (m *Manager) SetClock(now func() time.Time) { m.now = now }
-func (m *Manager) SetPoll(d time.Duration)        { m.poll = d }
+func (m *Manager) SetPoll(d time.Duration)       { m.poll = d }
 
 func (m *Manager) Mode() config.Mode {
 	m.modeMu.RLock()
