@@ -42,7 +42,7 @@ func (c *EHRContract) RequestAccess(ctx Ctx, rid, purpose string) (*AccessGrant,
 	if err != nil {
 		return nil, err
 	}
-	now, err := txTime(ctx)
+	now, err := freshTxTime(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -122,19 +122,25 @@ func (c *EHRContract) ReadRecordPHI(ctx Ctx, accessID string) (*PHIResponse, err
 	if err != nil {
 		return nil, err
 	}
-	h, err := ctx.GetStub().GetPrivateDataHash(phiCollection, m.RecordID)
-	if err != nil {
-		return nil, err
-	}
-	if hex.EncodeToString(h) != m.PHISha256 {
-		return nil, errIntegrity("private data for %s does not match its ledger digest", m.RecordID)
-	}
 	phi, err := ctx.GetStub().GetPrivateData(phiCollection, m.RecordID)
 	if err != nil {
 		return nil, err
 	}
 	if phi == nil {
-		return nil, errNotFound("this peer holds no private data for %s yet", m.RecordID)
+		return nil, errUnavailable("this peer holds no private data for %s yet", m.RecordID)
+	}
+	// The bytes about to be released must hash to the digest on the ledger. The peer's
+	// private-data hash is a second, independent copy of the same digest.
+	sum := sha256.Sum256(phi)
+	if hex.EncodeToString(sum[:]) != m.PHISha256 {
+		return nil, errIntegrity("private data for %s does not match its ledger digest", m.RecordID)
+	}
+	h, err := ctx.GetStub().GetPrivateDataHash(phiCollection, m.RecordID)
+	if err != nil {
+		return nil, err
+	}
+	if hex.EncodeToString(h) != m.PHISha256 {
+		return nil, errIntegrity("private data hash for %s does not match its ledger digest", m.RecordID)
 	}
 	return &PHIResponse{AccessID: accessID, RecordID: m.RecordID, PatientID: m.PatientID, Type: m.Type,
 		PHI: string(phi), PHISha256: m.PHISha256, Basis: d.Basis}, nil

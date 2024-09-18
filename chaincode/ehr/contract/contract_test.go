@@ -35,6 +35,9 @@ func newWorld(t *testing.T) *world {
 		// Ping needs no registry entry or attributes.
 		"probe": fakes.NewIdentity("Org1MSP", "probe", "", ""),
 	}}
+	// The peer's wall clock follows the simulated transaction time.
+	contract.WallClock = func() time.Time { return w.now }
+	t.Cleanup(func() { contract.WallClock = time.Now })
 	_, err := w.cc.BootstrapAdmin(w.as("ada"))
 	require.NoError(t, err)
 	_, err = w.cc.RegisterPatient(w.as("ada"), "P-1001", "alice")
@@ -483,6 +486,13 @@ func TestIntegrity(t *testing.T) {
 	r, err = w.cc.VerifyRecordIntegrity(w.as("chen"), rec.RecordID, rec.PHISha256)
 	require.NoError(t, err)
 	require.False(t, r.Match)
+	require.Contains(t, r.Reason, "stored private data")
+
+	// The peer's hash store disagreeing with the ledger is caught too.
+	w.stub.Private["PHICollection"][rec.RecordID] = []byte(`{"test":"HbA1c","value":"6.1%"}`)
+	w.stub.Hashes["PHICollection"][rec.RecordID] = make([]byte, 32)
+	r, err = w.cc.VerifyRecordIntegrity(w.as("chen"), rec.RecordID, rec.PHISha256)
+	require.NoError(t, err)
 	require.Contains(t, r.Reason, "private data hash")
 }
 
@@ -569,4 +579,33 @@ func TestRegistry(t *testing.T) {
 	p, err := w.cc.Ping(w.as("probe"))
 	require.NoError(t, err)
 	require.True(t, p.OK)
+}
+
+func TestBackdatedProposalsRejected(t *testing.T) {
+	w, rec := seeded(t)
+	real := w.now
+	// The gateway stamps the proposal an hour in the past; the peer's clock says otherwise.
+	contract.WallClock = func() time.Time { return real.Add(time.Hour) }
+	_, err := w.cc.RequestAccess(w.as("chen"), rec.RecordID, "backdated")
+	requireCode(t, err, "INVALID")
+	_, err = w.cc.GrantConsent(w.as("alice"), "D-3001", []string{"lab"}, []string{"read"}, "x", w.until(24*time.Hour))
+	requireCode(t, err, "INVALID")
+	_, err = w.cc.RequestEmergencyAccess(w.as("rivera"), "P-1001", "backdated emergency reason")
+	requireCode(t, err, "INVALID")
+	// Small skew is fine.
+	contract.WallClock = func() time.Time { return w.now.Add(90 * time.Second) }
+	_, err = w.cc.RequestAccess(w.as("chen"), rec.RecordID, "ok")
+	require.NoError(t, err)
+}
+
+func TestMissingPrivateDataIsUnavailableNotNotFound(t *testing.T) {
+	w, rec := seeded(t)
+	g, err := w.cc.RequestAccess(w.as("chen"), rec.RecordID, "review")
+	require.NoError(t, err)
+	delete(w.stub.Private["PHICollection"], rec.RecordID)
+	_, err = w.cc.ReadRecordPHI(w.as("chen"), g.AccessID)
+	requireCode(t, err, "PHI_UNAVAILABLE")
+	r, err := w.cc.VerifyRecordIntegrity(w.as("alice"), rec.RecordID, rec.PHISha256)
+	require.NoError(t, err)
+	require.Contains(t, r.Reason, "no copy")
 }

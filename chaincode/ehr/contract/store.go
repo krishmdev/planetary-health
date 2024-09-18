@@ -27,6 +27,34 @@ func errIntegrity(format string, a ...any) error {
 	return fmt.Errorf("INTEGRITY: "+format, a...)
 }
 
+// errUnavailable means this peer does not hold the private data yet (dissemination or
+// reconciliation still pending). The gateway maps it to 503 with Retry-After.
+func errUnavailable(format string, a ...any) error {
+	return fmt.Errorf("PHI_UNAVAILABLE: "+format, a...)
+}
+
+// WallClock is the endorsing peer's clock. It is only used to reject proposals whose timestamp
+// is far from real time; tests replace it.
+var WallClock = time.Now
+
+const maxSkew = 120 * time.Second
+
+// freshTxTime returns the proposal timestamp after checking it against the peer's own clock.
+// Fabric does not validate proposal timestamps, so without this one org's gateway could
+// backdate a consent or an access grant and the other org would still endorse it. Each
+// endorser checks independently; the write set does not depend on the check.
+func freshTxTime(ctx Ctx) (time.Time, error) {
+	t, err := txTime(ctx)
+	if err != nil {
+		return t, err
+	}
+	d := WallClock().Sub(t)
+	if d > maxSkew || d < -maxSkew {
+		return t, errInvalid("proposal timestamp %s is %s away from this peer's clock (max %s)", stamp(t), d.Round(time.Second), maxSkew)
+	}
+	return t, nil
+}
+
 func key(ctx Ctx, obj string, attrs ...string) (string, error) {
 	return ctx.GetStub().CreateCompositeKey(obj, attrs)
 }

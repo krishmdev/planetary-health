@@ -217,12 +217,24 @@ func (c *EHRContract) VerifyRecordIntegrity(ctx Ctx, rid, sha string) (*Integrit
 		return nil, err
 	}
 	r.PrivateHash = hex.EncodeToString(h)
-	r.Match = r.PrivateHash == m.PHISha256 && r.Supplied == m.PHISha256
+	phi, err := ctx.GetStub().GetPrivateData(phiCollection, rid)
+	if err != nil {
+		return nil, err
+	}
+	if phi != nil {
+		sum := sha256.Sum256(phi)
+		r.DataHash = hex.EncodeToString(sum[:])
+	}
+	r.Match = r.PrivateHash == m.PHISha256 && r.Supplied == m.PHISha256 && (phi == nil || r.DataHash == m.PHISha256)
 	switch {
+	case phi != nil && r.DataHash != m.PHISha256:
+		r.Reason = "stored private data does not hash to the ledger digest"
 	case r.PrivateHash != m.PHISha256:
 		r.Reason = "private data hash does not match the ledger digest"
 	case r.Supplied != m.PHISha256:
 		r.Reason = "supplied digest does not match the ledger digest"
+	case phi == nil:
+		r.Reason = "this peer holds no copy of the private data; checked the hash only"
 	}
 	return r, nil
 }

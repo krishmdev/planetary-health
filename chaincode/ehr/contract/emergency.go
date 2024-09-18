@@ -30,7 +30,7 @@ func (c *EHRContract) RequestEmergencyAccess(ctx Ctx, pid, reason string) (*Brea
 	if !patient.Active {
 		return nil, errInvalid("patient %s is deactivated", pid)
 	}
-	now, err := txTime(ctx)
+	now, err := freshTxTime(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (c *EHRContract) ReviewEmergencyAccess(ctx Ctx, grantID, outcome, note stri
 	if g.Reviewed {
 		return nil, errConflict("grant %s was already reviewed", grantID)
 	}
-	now, err := txTime(ctx)
+	now, err := freshTxTime(ctx)
 	if err != nil {
 		return nil, err
 	}

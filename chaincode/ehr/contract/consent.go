@@ -42,7 +42,7 @@ func (c *EHRContract) GrantConsent(ctx Ctx, grantee string, types []string, acti
 	if strings.TrimSpace(purpose) == "" {
 		return nil, errInvalid("purpose is required")
 	}
-	now, err := txTime(ctx)
+	now, err := freshTxTime(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (c *EHRContract) RevokeConsent(ctx Ctx, consentID string) (*Consent, error)
 	if cons.Status == "revoked" {
 		return nil, errConflict("consent %s is already revoked", consentID)
 	}
-	now, err := txTime(ctx)
+	now, err := freshTxTime(ctx)
 	if err != nil {
 		return nil, err
 	}

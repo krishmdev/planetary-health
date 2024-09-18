@@ -34,6 +34,9 @@ type Stub struct {
 
 	State     map[string][]byte
 	Private   map[string]map[string][]byte
+	// Hashes mirrors the peer's separate store of private-data hashes (kept on every peer,
+	// including ones that never received the data).
+	Hashes map[string]map[string][]byte
 	Transient map[string][]byte
 	Events    []Event
 
@@ -48,6 +51,7 @@ func NewStub(start time.Time) *Stub {
 	return &Stub{
 		State:   map[string][]byte{},
 		Private: map[string]map[string][]byte{},
+		Hashes:  map[string]map[string][]byte{},
 		history: map[string][]write{},
 		txTime:  start.UTC(),
 	}
@@ -149,8 +153,17 @@ func (s *Stub) coll(name string) map[string][]byte {
 	return s.Private[name]
 }
 
+func (s *Stub) hashes(name string) map[string][]byte {
+	if s.Hashes[name] == nil {
+		s.Hashes[name] = map[string][]byte{}
+	}
+	return s.Hashes[name]
+}
+
 func (s *Stub) PutPrivateData(collection, key string, value []byte) error {
 	s.coll(collection)[key] = append([]byte(nil), value...)
+	sum := sha256.Sum256(value)
+	s.hashes(collection)[key] = sum[:]
 	return nil
 }
 
@@ -158,23 +171,20 @@ func (s *Stub) GetPrivateData(collection, key string) ([]byte, error) {
 	return s.coll(collection)[key], nil
 }
 
-// GetPrivateDataHash matches Fabric: the SHA-256 of the value, nil if absent.
+// GetPrivateDataHash returns the SHA-256 recorded at write time, nil if never written.
 func (s *Stub) GetPrivateDataHash(collection, key string) ([]byte, error) {
-	v, ok := s.coll(collection)[key]
-	if !ok {
-		return nil, nil
-	}
-	sum := sha256.Sum256(v)
-	return sum[:], nil
+	return s.hashes(collection)[key], nil
 }
 
 func (s *Stub) DelPrivateData(collection, key string) error {
 	delete(s.coll(collection), key)
+	delete(s.hashes(collection), key)
 	return nil
 }
 
 func (s *Stub) PurgePrivateData(collection, key string) error {
 	delete(s.coll(collection), key)
+	delete(s.hashes(collection), key)
 	return nil
 }
 

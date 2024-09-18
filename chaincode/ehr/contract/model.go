@@ -112,6 +112,7 @@ type IntegrityReport struct {
 	OnLedger    string `json:"onLedger"`
 	Supplied    string `json:"supplied"`
 	PrivateHash string `json:"privateHash"`
+	DataHash    string `json:"dataHash,omitempty"`
 	Match       bool   `json:"match"`
 	Reason      string `json:"reason,omitempty"`
 }
