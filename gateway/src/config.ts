@@ -115,8 +115,15 @@ export function jwtAudience(org: OrgKey): string {
   return `${org}-api`;
 }
 
+// JWT_SECRET/WALLET_KEY may also be given per org (ORG1_JWT_SECRET, ...), which lets one .env
+// file serve both gateways and the seed script.
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const e = Env.parse(env);
+  const prefix = (env.ORG ?? 'org1').toUpperCase();
+  const e = Env.parse({
+    ...env,
+    JWT_SECRET: env.JWT_SECRET ?? env[`${prefix}_JWT_SECRET`],
+    WALLET_KEY: env.WALLET_KEY ?? env[`${prefix}_WALLET_KEY`],
+  });
   const root = path.resolve(import.meta.dirname, '../..');
   const org = ORGS[e.ORG];
   const orgsDir = e.FABRIC_ORGS_DIR ?? path.join(root, '.fabric/fabric-samples/test-network/organizations');

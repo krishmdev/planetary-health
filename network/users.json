@@ -1,0 +1,12 @@
+{
+  "org1": [
+    { "username": "ada", "displayName": "Ada Okafor", "role": "admin", "ehrId": "A-1001", "password": "ada-demo" },
+    { "username": "alice", "displayName": "Alice Moreno", "role": "patient", "ehrId": "P-1001", "password": "alice-demo" },
+    { "username": "ben", "displayName": "Ben Carter", "role": "patient", "ehrId": "P-1002", "password": "ben-demo" },
+    { "username": "drchen", "displayName": "Dr. Lin Chen", "role": "doctor", "ehrId": "D-2001", "password": "drchen-demo", "specialty": "Cardiology" }
+  ],
+  "org2": [
+    { "username": "omar", "displayName": "Omar Haddad", "role": "admin", "ehrId": "A-3001", "password": "omar-demo" },
+    { "username": "drrivera", "displayName": "Dr. Sofia Rivera", "role": "doctor", "ehrId": "D-3001", "password": "drrivera-demo", "specialty": "Emergency medicine" }
+  ]
+}

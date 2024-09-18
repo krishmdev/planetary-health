@@ -1,0 +1,50 @@
+# Read replica for Org1 (peer1.org1). It has the chaincode installed so it can serve
+# evaluations; the org1 gateway uses it for PHI reads when READ_PEER_ENDPOINT is set.
+networks:
+  test:
+    name: fabric_test
+    external: true
+
+volumes:
+  peer1.org1.example.com:
+
+services:
+  peer1.org1.example.com:
+    container_name: peer1.org1.example.com
+    image: hyperledger/fabric-peer:3.1.5
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_CFG_PATH=/etc/hyperledger/peercfg
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_ID=peer1.org1.example.com
+      - CORE_PEER_ADDRESS=peer1.org1.example.com:8051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:8051
+      - CORE_PEER_CHAINCODEADDRESS=peer1.org1.example.com:8052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:8052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org1.example.com:8051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_OPERATIONS_LISTENADDRESS=peer1.org1.example.com:9450
+      - CORE_METRICS_PROVIDER=prometheus
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
+    volumes:
+      - ${TN}/organizations/peerOrganizations/org1.example.com/peers/peer1.org1.example.com:/etc/hyperledger/fabric
+      - ${TN}/compose/docker/peercfg:/etc/hyperledger/peercfg
+      - peer1.org1.example.com:/var/hyperledger/production
+      - /var/run/docker.sock:/host/var/run/docker.sock
+    working_dir: /root
+    command: peer node start
+    ports:
+      - 8051:8051
+      - 9450:9450
+    networks:
+      - test
