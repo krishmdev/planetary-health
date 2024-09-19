@@ -147,8 +147,8 @@ func testConfig(mode config.Mode) *config.Config {
 		Mode: mode, Strategy: config.StrategyStop, IdleTimeout: time.Minute, PeerIdleTimeout: 5 * time.Minute,
 		WakeTimeout: 2 * time.Second, MaxConcurrentWakes: 4, QueueLimit: 256,
 		APIs: []config.API{
-			{Name: "org1-api", Container: "org1-api", Readiness: "org1-api/readyz", Group: "ehr"},
-			{Name: "org2-api", Container: "org2-api", Readiness: "org2-api/readyz", Group: "ehr"},
+			{Name: "org1-api", Container: "org1-api", Upstream: "org1-api", Readiness: "org1-api/readyz", Group: "ehr"},
+			{Name: "org2-api", Container: "org2-api", Upstream: "org2-api", Readiness: "org2-api/readyz", Group: "ehr"},
 		},
 		Groups: map[string]config.Group{"ehr": {Channel: "ehrchannel", Peers: []config.Peer{
 			{Name: "peer0.org1", Container: "peer0.org1", Ops: "peer0.org1", ChaincodePrefix: "dev-peer0.org1"},
@@ -179,7 +179,7 @@ func allStopped() map[string]engine.State {
 
 func TestFullColdFirstRequestWakesWholeEndorsementGroup(t *testing.T) {
 	m, eng, _ := setup(t, config.ModeFull, allStopped())
-	act, release, err := m.Acquire(context.Background(), "org1-api")
+	act, release, err := m.Acquire(context.Background(), "org1-api", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestFullColdFirstRequestWakesWholeEndorsementGroup(t *testing.T) {
 		t.Fatalf("bad breakdown %+v", act)
 	}
 	// Second request is warm.
-	act2, rel2, err := m.Acquire(context.Background(), "org1-api")
+	act2, rel2, err := m.Acquire(context.Background(), "org1-api", false)
 	if err != nil || act2.Cold {
 		t.Fatalf("want warm, got %+v %v", act2, err)
 	}
@@ -212,7 +212,7 @@ func TestWarmOrg1WaitsForSleepingOrg2(t *testing.T) {
 	states["peer0.org1"] = engine.Running
 	m, eng, _ := setup(t, config.ModeFull, states)
 
-	act, release, err := m.Acquire(context.Background(), "org1-api")
+	act, release, err := m.Acquire(context.Background(), "org1-api", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +228,7 @@ func TestWarmOrg1WaitsForSleepingOrg2(t *testing.T) {
 func TestPeersMustPassOrdererBoundary(t *testing.T) {
 	m, _, probe := setup(t, config.ModeFull, allStopped())
 	probe.heights["peer0.org2"] = 15 // behind the boundary (20); needs six more blocks
-	act, release, err := m.Acquire(context.Background(), "org1-api")
+	act, release, err := m.Acquire(context.Background(), "org1-api", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestPeersMustPassOrdererBoundary(t *testing.T) {
 func TestWakeTimeoutIsAnErrorNotAPartialActivation(t *testing.T) {
 	m, _, probe := setup(t, config.ModeFull, allStopped())
 	probe.neverOK = true
-	_, _, err := m.Acquire(context.Background(), "org1-api")
+	_, _, err := m.Acquire(context.Background(), "org1-api", false)
 	if !errors.Is(err, lifecycle.ErrWakeTimeout) {
 		t.Fatalf("want ErrWakeTimeout, got %v", err)
 	}
@@ -267,7 +267,7 @@ func TestConcurrentRequestsShareOneActivation(t *testing.T) {
 			if i%2 == 1 {
 				api = "org2-api"
 			}
-			act, release, err := m.Acquire(context.Background(), api)
+			act, release, err := m.Acquire(context.Background(), api, false)
 			if err != nil {
 				t.Error(err)
 				return
@@ -294,7 +294,7 @@ func TestAPIModeLeavesPeersAlone(t *testing.T) {
 	states["peer0.org1"] = engine.Running
 	states["peer0.org2"] = engine.Running
 	m, eng, _ := setup(t, config.ModeAPI, states)
-	_, release, err := m.Acquire(context.Background(), "org2-api")
+	_, release, err := m.Acquire(context.Background(), "org2-api", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,7 +313,7 @@ func TestIdleReaping(t *testing.T) {
 	now := time.Now()
 	m.SetClock(func() time.Time { return now })
 
-	_, release, err := m.Acquire(context.Background(), "org1-api")
+	_, release, err := m.Acquire(context.Background(), "org1-api", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -375,7 +375,7 @@ func TestPauseStrategy(t *testing.T) {
 	if eng.count(eng.pauses, "org1-api") != 1 {
 		t.Fatal("pause strategy should pause")
 	}
-	act, release, err := m.Acquire(context.Background(), "org1-api")
+	act, release, err := m.Acquire(context.Background(), "org1-api", false)
 	if err != nil || !act.Cold {
 		t.Fatalf("resume from pause: %+v %v", act, err)
 	}
@@ -388,8 +388,9 @@ func TestPauseStrategy(t *testing.T) {
 func TestForcedScaleDownRefusesBusyUnit(t *testing.T) {
 	states := allStopped()
 	states["org1-api"] = engine.Running
+	states["peer0.org1"], states["peer0.org2"] = engine.Running, engine.Running
 	m, _, _ := setup(t, config.ModeAPI, states)
-	_, release, err := m.Acquire(context.Background(), "org1-api")
+	_, release, err := m.Acquire(context.Background(), "org1-api", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -414,17 +415,41 @@ func TestQueueLimit(t *testing.T) {
 	_ = m.Sync(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		_, rel, err := m.Acquire(context.Background(), "org1-api")
+		_, rel, err := m.Acquire(context.Background(), "org1-api", false)
 		if rel != nil {
 			rel()
 		}
 		done <- err
 	}()
 	time.Sleep(20 * time.Millisecond)
-	if _, _, err := m.Acquire(context.Background(), "org1-api"); !errors.Is(err, lifecycle.ErrQueueFull) {
+	if _, _, err := m.Acquire(context.Background(), "org1-api", false); !errors.Is(err, lifecycle.ErrQueueFull) {
 		t.Fatalf("want ErrQueueFull, got %v", err)
 	}
 	if err := <-done; err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestLoginWakesOnlyTheAPI(t *testing.T) {
+	m, eng, probe := setup(t, config.ModeFull, allStopped())
+	act, release, err := m.Acquire(context.Background(), "org1-api", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release()
+	if !act.Cold || eng.count(eng.starts, "org1-api") != 1 {
+		t.Fatalf("login should start the API: %+v", act)
+	}
+	if eng.count(eng.starts, "peer0.org1") != 0 || eng.count(eng.starts, "peer0.org2") != 0 || probe.readyCall.Load() != 0 {
+		t.Fatal("login must not wake the endorsement group or run the endorsement probe")
+	}
+	// The next real request runs the full activation.
+	act, release, err = m.Acquire(context.Background(), "org1-api", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release()
+	if !act.Cold || eng.count(eng.starts, "peer0.org2") != 1 || eng.count(eng.starts, "org1-api") != 1 {
+		t.Fatalf("full activation after login: %+v", act)
 	}
 }

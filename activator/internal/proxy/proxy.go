@@ -91,7 +91,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	act, release, err := h.mgr.Acquire(r.Context(), name)
+	// Logging in needs only the gateway process, so it never wakes the endorsement group.
+	act, release, err := h.mgr.Acquire(r.Context(), name, r.URL.Path == "/auth/login")
 	if err != nil {
 		switch {
 		case errors.Is(err, lifecycle.ErrQueueFull):

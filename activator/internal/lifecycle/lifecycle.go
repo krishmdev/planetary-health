@@ -49,6 +49,7 @@ type Activation struct {
 
 type call struct {
 	done chan struct{}
+	deep bool
 	act  Activation
 	err  error
 }
@@ -60,6 +61,7 @@ type apiUnit struct {
 	state        State
 	inflight     int
 	waiting      int
+	deep         bool // passed the full readiness predicate since it last started
 	lastActivity time.Time
 	wake         *call
 }
@@ -181,66 +183,72 @@ func (m *Manager) needsGroup(u *apiUnit) *groupUnit {
 }
 
 // Acquire returns once the API can take the request. The returned release must be called when
-// the request (including a streaming response) finishes.
-func (m *Manager) Acquire(ctx context.Context, name string) (Activation, func(), error) {
+// the request (including a streaming response) finishes. A shallow acquire (used for login)
+// only needs the API process itself: it never wakes the endorsement group.
+func (m *Manager) Acquire(ctx context.Context, name string, shallow bool) (Activation, func(), error) {
 	u, ok := m.apis[name]
 	if !ok {
 		return Activation{}, nil, fmt.Errorf("unknown api %s", name)
 	}
-	g := m.needsGroup(u)
+	var g *groupUnit
+	if !shallow {
+		g = m.needsGroup(u)
+	}
+	var act Activation
 	u.mu.Lock()
 	u.inflight++
 	u.lastActivity = m.now()
-	if g != nil {
-		g.mu.Lock()
-		g.lastActivity = m.now()
-		groupReady := g.state == Ready
-		g.mu.Unlock()
-		if !groupReady && u.state == Ready {
-			// The API is up but its endorsement group went to sleep; re-run the activation.
-			m.setAPIState(u, Stopped)
+	for {
+		groupReady := true
+		if g != nil {
+			g.mu.Lock()
+			g.lastActivity = m.now()
+			groupReady = g.state == Ready
+			g.mu.Unlock()
 		}
-	}
-	if u.state == Ready {
+		if u.state == Ready && (shallow || (u.deep && groupReady)) {
+			u.mu.Unlock()
+			return act, m.releaser(u), nil
+		}
+		if u.waiting >= m.cfg.QueueLimit {
+			u.inflight--
+			u.mu.Unlock()
+			m.met.Rejections.WithLabelValues(name, "queue_full").Inc()
+			return Activation{}, nil, ErrQueueFull
+		}
+		c := u.wake
+		if c == nil {
+			c = &call{done: make(chan struct{}), deep: !shallow}
+			u.wake = c
+			m.setAPIState(u, Waking)
+			go m.activate(u, g, c)
+		}
+		u.waiting++
 		u.mu.Unlock()
-		return Activation{}, m.releaser(u), nil
-	}
-	if u.waiting >= m.cfg.QueueLimit {
-		u.inflight--
-		u.mu.Unlock()
-		m.met.Rejections.WithLabelValues(name, "queue_full").Inc()
-		return Activation{}, nil, ErrQueueFull
-	}
-	c := u.wake
-	if c == nil {
-		c = &call{done: make(chan struct{})}
-		u.wake = c
-		m.setAPIState(u, Waking)
-		go m.activate(u, g, c)
-	}
-	u.waiting++
-	u.mu.Unlock()
 
-	var err error
-	select {
-	case <-c.done:
-		err = c.err
-	case <-ctx.Done():
-		err = ctx.Err()
+		var err error
+		select {
+		case <-c.done:
+			err = c.err
+		case <-ctx.Done():
+			err = ctx.Err()
+		}
+		u.mu.Lock()
+		u.waiting--
+		if err != nil {
+			u.inflight--
+			u.lastActivity = m.now()
+			u.mu.Unlock()
+			return Activation{}, nil, err
+		}
+		// A request that joined a shallow (login) activation loops once more for the full one.
+		act = mergeActivation(act, c.act)
 	}
-	u.mu.Lock()
-	u.waiting--
-	if err != nil {
-		u.inflight--
-		u.lastActivity = m.now()
-	}
-	u.mu.Unlock()
-	if err != nil {
-		return Activation{}, nil, err
-	}
-	act := c.act
-	act.Cold = true
-	return act, m.releaser(u), nil
+}
+
+func mergeActivation(a, b Activation) Activation {
+	return Activation{Cold: true, StartMs: a.StartMs + b.StartMs, ReadyMs: a.ReadyMs + b.ReadyMs,
+		TotalMs: a.TotalMs + b.TotalMs, Woke: append(append([]string{}, a.Woke...), b.Woke...)}
 }
 
 func (m *Manager) releaser(u *apiUnit) func() {
@@ -259,7 +267,7 @@ func (m *Manager) activate(u *apiUnit, g *groupUnit, c *call) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.cfg.WakeTimeout)
 	defer cancel()
 	t0 := m.now()
-	act, err := m.wake(ctx, u, g, t0)
+	act, err := m.wake(ctx, u, g, c, t0)
 	if err != nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		err = fmt.Errorf("%w after %s: %v", ErrWakeTimeout, m.cfg.WakeTimeout, err)
 	}
@@ -269,6 +277,9 @@ func (m *Manager) activate(u *apiUnit, g *groupUnit, c *call) {
 		m.setAPIState(u, Stopped) // unknown; the next request retries the whole activation
 	} else {
 		m.setAPIState(u, Ready)
+		if c.deep {
+			u.deep = true
+		}
 		m.met.Activations.WithLabelValues(u.cfg.Name).Inc()
 		m.met.ActivationSecs.WithLabelValues(u.cfg.Name, "start").Observe(float64(act.StartMs) / 1000)
 		m.met.ActivationSecs.WithLabelValues(u.cfg.Name, "ready").Observe(float64(act.ReadyMs) / 1000)
@@ -280,7 +291,7 @@ func (m *Manager) activate(u *apiUnit, g *groupUnit, c *call) {
 	close(c.done)
 }
 
-func (m *Manager) wake(ctx context.Context, u *apiUnit, g *groupUnit, t0 time.Time) (Activation, error) {
+func (m *Manager) wake(ctx context.Context, u *apiUnit, g *groupUnit, c *call, t0 time.Time) (Activation, error) {
 	select {
 	case m.sem <- struct{}{}:
 	case <-ctx.Done():
@@ -328,6 +339,15 @@ func (m *Manager) wake(ctx context.Context, u *apiUnit, g *groupUnit, t0 time.Ti
 	}
 	act.StartMs = m.now().Sub(t0).Milliseconds()
 
+	if !c.deep {
+		// Login only needs the gateway process.
+		if err := readiness.Until(ctx, m.poll, func(ctx context.Context) error { return m.probe.Healthy(ctx, u.cfg.Upstream) }); err != nil {
+			return act, fmt.Errorf("%s not up: %w", u.cfg.Name, err)
+		}
+		act.ReadyMs = m.now().Sub(t0).Milliseconds()
+		act.Woke = woke
+		return act, nil
+	}
 	// Readiness: the gateway's /readyz reads the orderer boundary and gets a real endorsement
 	// from both orgs. In full mode every group peer must also have committed through it.
 	var boundary uint64
@@ -514,6 +534,7 @@ func (m *Manager) stopAPI(ctx context.Context, u *apiUnit, reason string, force 
 		err = m.eng.Stop(ctx, u.cfg.Container, 10*time.Second)
 	}
 	u.mu.Lock()
+	u.deep = false
 	if err != nil {
 		m.setAPIState(u, Stopped)
 	} else {
@@ -578,7 +599,7 @@ func (m *Manager) ScaleDown(ctx context.Context, unit string) error {
 func (m *Manager) WakeAll(ctx context.Context) error {
 	var errs []error
 	for name := range m.apis {
-		_, release, err := m.Acquire(ctx, name)
+		_, release, err := m.Acquire(ctx, name, false)
 		if err == nil {
 			release()
 		}
