@@ -7,11 +7,15 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { SignJWT } from 'jose';
+import { loadConfig } from './config.js';
+import { FabricLedger } from './fabric/client.js';
+import { toHttpError } from './fabric/errors.js';
+import { Wallet } from './wallet.js';
 
 const ORG1 = process.env.ORG1_URL ?? 'http://localhost:8080';
 const ORG2 = process.env.ORG2_URL ?? 'http://localhost:8081';
-const REPLICA = process.env.REPLICA_URL ?? '';
-const CONTROL = process.env.CONTROL_URL ?? ''; // an org1 gateway with FRESHNESS=off on the replica
+const REPLICA = process.env.REPLICA_URL ?? 'http://localhost:8082';
+const CONTROL = process.env.CONTROL_URL ?? 'http://localhost:8083'; // org1 gateway, FRESHNESS=off, reads on the replica
 const root = path.resolve(import.meta.dirname, '../..');
 
 interface Step {
@@ -183,6 +187,32 @@ async function main() {
     return expect(d.status, 403, { revokedInBlock: rv.body.receipt.blockNumber, body: d.body });
   });
 
+  await step('MVCC: a grant endorsed before a revocation but ordered after it is invalidated (409), then denied (403)', async () => {
+    const consent = await grantConsent(alice, 'D-3001', ['lab']);
+    const cfg = loadConfig({ ...process.env, ORG: 'org2' });
+    const ledger = new FabricLedger(cfg, new Wallet(cfg.walletDir, cfg.walletKey));
+    try {
+      const pending = await ledger.prepare('drrivera', 'RequestAccess', [lab.recordId, 'race with revocation']);
+      const rv = await alice.call('DELETE', `/consents/${consent}`);
+      let commitStatus = 'VALID';
+      let mapped = 200;
+      try {
+        await pending.commit();
+      } catch (err) {
+        const e = toHttpError(err);
+        mapped = e.status;
+        commitStatus = (err as { status?: string }).status ?? e.body.error;
+      }
+      const retry = await rivera.call('POST', `/records/${lab.recordId}/access`, { purpose: 'retry after conflict' });
+      return {
+        ok: mapped === 409 && ['MVCC_READ_CONFLICT', 'PHANTOM_READ_CONFLICT'].includes(commitStatus) && retry.status === 403,
+        detail: { endorsedTx: pending.txId, revokedInBlock: rv.body.receipt?.blockNumber, commitStatus, mapped, retry: retry.status },
+      };
+    } finally {
+      ledger.close();
+    }
+  });
+
   let bgId = '';
   let benNote = '';
   await step('break-glass: doctor without consent gets 60-minute emergency access', async () => {
@@ -305,13 +335,15 @@ async function replicaChecks(alice: Api, recordId: string) {
     return { ok: r.status === 503 && r.body.error === 'STALE_PEER', detail: { status: r.status, error: r.body.error, message: r.body.message } };
   });
   if (CONTROL) {
-    // Control: the same sequence with the boundary wait turned off. Recorded, not asserted:
-    // whether the lagging peer serves stale data depends on how far it is behind.
+    // Negative control: the same sequence with the boundary wait turned off must serve the
+    // revoked read from the lagging replica. If it didn't, the test above would prove nothing.
     const control = await login(CONTROL, 'drchen');
-    const t0 = performance.now();
-    const r = await lagRun('control, freshness off', control, false);
-    steps.push({ name: 'control (FRESHNESS=off): result of the same lagging read', ok: true, detail: { status: r.status, servedPHI: r.status === 200, error: r.body.error }, ms: Math.round(performance.now() - t0) });
-    console.log(`INFO  control with freshness off returned ${r.status}`);
+    await step('control (FRESHNESS=off): the lagging replica serves the revoked read', async () => {
+      const r = await lagRun('control, freshness off', control, false);
+      return { ok: r.status === 200 && typeof r.body.record?.phi === 'string', detail: { status: r.status, revokeBlock: r.revokeBlock, freshness: r.body.freshness, error: r.body.error } };
+    });
+  } else {
+    await step('control (FRESHNESS=off) gateway configured', async () => ({ ok: false, detail: 'set CONTROL_URL' }));
   }
 }
 

@@ -1,0 +1,88 @@
+# The serverless-style app tier on top of the Fabric test network (network/all-up.sh first).
+# The two gateways are created but left stopped by `make app-up`; the activator starts them on
+# demand. Each gateway only gets its own org's wallet key and JWT secret.
+name: planetary-app
+
+x-gateway: &gateway
+  image: planetary-gateway:dev
+  build: { context: ., dockerfile: gateway/Dockerfile }
+  networks: [fabric]
+  restart: "no"
+
+services:
+  org1-api:
+    <<: *gateway
+    container_name: planetary-org1-api
+    environment:
+      ORG: org1
+      PORT: "8080"
+      PEER_ENDPOINT: peer0.org1.example.com:7051
+      PEER_OPS: http://peer0.org1.example.com:9444
+      PEER_OPS_ALL: peer0.org1=http://peer0.org1.example.com:9444,peer0.org2=http://peer0.org2.example.com:9445
+      ORDERERS: &orderers orderer.example.com=orderer.example.com:7050|http://orderer.example.com:9443,orderer2.example.com=orderer2.example.com:7052|http://orderer2.example.com:9446,orderer3.example.com=orderer3.example.com:7056|http://orderer3.example.com:9447,orderer4.example.com=orderer4.example.com:7058|http://orderer4.example.com:9448
+      CA_URL: https://ca_org1:7054
+      FABRIC_ORGS_DIR: /fabric/organizations
+      WALLET_DIR: /wallet
+      DATA_DIR: /data
+      WALLET_KEY: ${ORG1_WALLET_KEY:?set in .env}
+      JWT_SECRET: ${ORG1_JWT_SECRET:?set in .env}
+    volumes:
+      - ./.fabric/fabric-samples/test-network/organizations:/fabric/organizations:ro
+      - ./.wallet/org1:/wallet
+      - ./.data/org1:/data
+
+  org2-api:
+    <<: *gateway
+    container_name: planetary-org2-api
+    environment:
+      ORG: org2
+      PORT: "8080"
+      PEER_ENDPOINT: peer0.org2.example.com:9051
+      PEER_OPS: http://peer0.org2.example.com:9445
+      PEER_OPS_ALL: peer0.org1=http://peer0.org1.example.com:9444,peer0.org2=http://peer0.org2.example.com:9445
+      ORDERERS: *orderers
+      CA_URL: https://ca_org2:8054
+      FABRIC_ORGS_DIR: /fabric/organizations
+      WALLET_DIR: /wallet
+      DATA_DIR: /data
+      WALLET_KEY: ${ORG2_WALLET_KEY:?set in .env}
+      JWT_SECRET: ${ORG2_JWT_SECRET:?set in .env}
+    volumes:
+      - ./.fabric/fabric-samples/test-network/organizations:/fabric/organizations:ro
+      - ./.wallet/org2:/wallet
+      - ./.data/org2:/data
+
+  # Always on. It verifies JWTs before waking anything, so with HS256 it needs both orgs'
+  # verification secrets (ES256 would let it hold public keys only; see docs/threat-model.md).
+  activator:
+    image: planetary-activator:dev
+    build: { context: ./activator }
+    container_name: planetary-activator
+    environment:
+      ACTIVATOR_MODE: ${ACTIVATOR_MODE:-api}
+      ACTIVATOR_STRATEGY: ${ACTIVATOR_STRATEGY:-stop}
+      ACTIVATOR_IDLE_TIMEOUT: ${ACTIVATOR_IDLE_TIMEOUT:-60s}
+      ACTIVATOR_PEER_IDLE_TIMEOUT: ${ACTIVATOR_PEER_IDLE_TIMEOUT:-300s}
+      ORG1_JWT_SECRET: ${ORG1_JWT_SECRET:?set in .env}
+      ORG2_JWT_SECRET: ${ORG2_JWT_SECRET:?set in .env}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "8090:8090"
+    networks: [fabric]
+
+  ui:
+    image: planetary-ui:dev
+    build: { context: ., dockerfile: ui/Dockerfile }
+    container_name: planetary-ui
+    ports:
+      - "8088:80"
+    networks: [fabric]
+    depends_on: [activator]
+
+networks:
+  fabric:
+    name: fabric_test
+    external: true

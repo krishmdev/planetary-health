@@ -127,6 +127,22 @@ export class FabricLedger implements Ledger {
     };
   }
 
+  // prepare endorses now and submits later. The e2e uses it to order a transaction after a
+  // conflicting one that was endorsed later but committed first.
+  async prepare(user: string, fn: string, args: string[]): Promise<{ txId: string; commit: () => Promise<TxReceipt> }> {
+    const tx = await this.contract(user).newProposal(fn, { arguments: args }).endorse();
+    return {
+      txId: tx.getTransactionId(),
+      commit: async () => {
+        const sub = await tx.submit();
+        const status = await sub.getStatus();
+        const name = StatusNames[status.code] ?? String(status.code);
+        if (!status.successful) throw new CommitFailed(status.transactionId, name, status.blockNumber.toString());
+        return { txId: status.transactionId, blockNumber: status.blockNumber.toString(), status: name };
+      },
+    };
+  }
+
   async ordererBoundary(user: string): Promise<bigint> {
     const s = this.session(user, false);
     const env = await seekNewestEnvelope(this.cfg.channel, { mspId: s.mspId, certificate: s.certificate, signer: s.signer });
