@@ -40,6 +40,17 @@ describe('Wallet', () => {
     expect(() => new Wallet(dir, 'master-key-for-tests').get('alice')).toThrow();
   });
 
+  it('binds the key to its MSP ID and certificate', () => {
+    const dir = tmp();
+    new Wallet(dir, 'master-key-for-tests').put({ label: 'alice', mspId: 'Org1MSP', certificate: 'A', privateKey: pem });
+    const file = path.join(dir, 'alice.id');
+    const stored = JSON.parse(fs.readFileSync(file, 'utf8'));
+    fs.writeFileSync(file, JSON.stringify({ ...stored, certificate: 'MALLORY' }));
+    expect(() => new Wallet(dir, 'master-key-for-tests').get('alice')).toThrow();
+    fs.writeFileSync(file, JSON.stringify({ ...stored, mspId: 'Org2MSP' }));
+    expect(() => new Wallet(dir, 'master-key-for-tests').get('alice')).toThrow();
+  });
+
   it('refuses labels that could escape the directory', () => {
     const w = new Wallet(tmp(), 'master-key-for-tests');
     expect(() => w.put({ label: '../x', mspId: 'm', certificate: 'c', privateKey: pem })).toThrow();

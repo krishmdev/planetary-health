@@ -4,7 +4,8 @@ import path from 'node:path';
 
 // Custodial per-user wallet. One file per enrolled identity, named by its label (the login
 // subject). Private keys are encrypted with AES-256-GCM under a key derived from the gateway's
-// master key; the label is bound in as associated data so files can't be swapped between users.
+// master key. The label, MSP ID and certificate are bound in as associated data, so a key can't be
+// moved to another user's file or paired with a different certificate.
 
 export interface WalletIdentity {
   label: string;
@@ -26,6 +27,10 @@ interface StoredIdentity {
 interface WalletMeta {
   version: 1;
   salt: string;
+}
+
+function aad(label: string, mspId: string, certificate: string): Buffer {
+  return Buffer.from(`${label}\n${mspId}\n${certificate}`);
 }
 
 const LABEL = /^[a-z0-9][a-z0-9._-]{1,63}$/;
@@ -58,7 +63,7 @@ export class Wallet {
   put(id: WalletIdentity): void {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', this.key, iv);
-    cipher.setAAD(Buffer.from(id.label));
+    cipher.setAAD(aad(id.label, id.mspId, id.certificate));
     const ciphertext = Buffer.concat([cipher.update(id.privateKey, 'utf8'), cipher.final()]);
     const stored: StoredIdentity = {
       version: 1,
@@ -87,7 +92,7 @@ export class Wallet {
     const stored = JSON.parse(fs.readFileSync(this.file(label), 'utf8')) as StoredIdentity;
     if (stored.label !== label) throw new Error(`wallet file for ${label} is labelled ${stored.label}`);
     const decipher = createDecipheriv('aes-256-gcm', this.key, Buffer.from(stored.iv, 'base64'));
-    decipher.setAAD(Buffer.from(label));
+    decipher.setAAD(aad(label, stored.mspId, stored.certificate));
     decipher.setAuthTag(Buffer.from(stored.tag, 'base64'));
     const privateKey = Buffer.concat([
       decipher.update(Buffer.from(stored.ciphertext, 'base64')),

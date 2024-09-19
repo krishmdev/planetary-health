@@ -13,6 +13,7 @@ const CHAINCODE_CODES: Record<string, number> = {
   INVALID: 400,
   CONFLICT: 409,
   INTEGRITY: 500,
+  PHI_UNAVAILABLE: 503,
 };
 
 const QUORUM = 'insufficient number of orderers';
@@ -26,7 +27,7 @@ function detailMessages(err: unknown): string[] {
 }
 
 function chaincodeCode(text: string): { code: string; message: string } | null {
-  const m = /(ACCESS_DENIED|NOT_FOUND|INVALID|CONFLICT|INTEGRITY): ?(.*)$/s.exec(text);
+  const m = /(ACCESS_DENIED|NOT_FOUND|INVALID|CONFLICT|INTEGRITY|PHI_UNAVAILABLE): ?(.*)$/s.exec(text);
   return m && m[1] ? { code: m[1], message: (m[2] ?? '').trim() } : null;
 }
 
@@ -60,7 +61,8 @@ export function toHttpError(err: unknown): HttpError {
   for (const d of [...details, text]) {
     const cc = chaincodeCode(d);
     if (cc) {
-      return { status: CHAINCODE_CODES[cc.code] ?? 500, body: { error: cc.code, message: cc.message } };
+      const status = CHAINCODE_CODES[cc.code] ?? 500;
+      return { status, body: { error: cc.code, message: cc.message }, ...(status === 503 ? { retryAfter: 3 } : {}) };
     }
   }
   if (/creator.*(revoked|not valid|expired)|certificate.*revoked|access denied: channel/i.test(text)) {

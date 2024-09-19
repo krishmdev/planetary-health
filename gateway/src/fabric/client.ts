@@ -2,6 +2,7 @@ import { createPrivateKey } from 'node:crypto';
 import fs from 'node:fs';
 import * as grpc from '@grpc/grpc-js';
 import { connect, type Gateway, hash, signers, type Signer } from '@hyperledger/fabric-gateway';
+import { gateway as gwproto, peer as peerproto } from '@hyperledger/fabric-protos';
 import type { Config } from '../config.js';
 import type { Wallet } from '../wallet.js';
 import { OrdererClients, quorumNewest, seekNewestEnvelope } from './boundary.js';
@@ -35,6 +36,7 @@ interface Session {
 export class FabricLedger implements Ledger {
   private submitPeer: grpc.Client;
   private readPeer: grpc.Client;
+  private readEndorser: peerproto.EndorserClient;
   private sessions = new Map<string, Session>();
   private orderers: OrdererClients;
 
@@ -47,6 +49,10 @@ export class FabricLedger implements Ledger {
       new grpc.Client(endpoint, grpc.credentials.createSsl(tls), { 'grpc.ssl_target_name_override': alias });
     this.submitPeer = mk(cfg.peer.endpoint, cfg.peer.hostAlias);
     this.readPeer = cfg.readPeer ? mk(cfg.readPeer.endpoint, cfg.readPeer.hostAlias) : this.submitPeer;
+    const rp = cfg.readPeer ?? cfg.peer;
+    this.readEndorser = new peerproto.EndorserClient(rp.endpoint, grpc.credentials.createSsl(tls), {
+      'grpc.ssl_target_name_override': rp.hostAlias,
+    });
     this.orderers = new OrdererClients(cfg.orderers, fs.readFileSync(cfg.ordererTlsRootCert));
   }
 
@@ -79,8 +85,34 @@ export class FabricLedger implements Ledger {
   }
 
   async evaluate<T>(user: string, fn: string, args: string[], opts?: { readPeer?: boolean }): Promise<T> {
-    const bytes = await this.contract(user, opts?.readPeer ?? false).evaluate(fn, { arguments: args });
+    if (opts?.readPeer) return parse<T>(await this.evaluateOnReadPeer(user, fn, args));
+    const bytes = await this.contract(user).evaluate(fn, { arguments: args });
     return parse<T>(bytes);
+  }
+
+  // The Fabric gateway service routes an evaluate to whichever local-org peer reports the
+  // highest height, which is not necessarily the peer we waited on. PHI reads therefore skip the
+  // gateway service and send the signed proposal straight to the read peer's Endorser, so the
+  // freshness wait and the evaluation happen on the same peer.
+  private async evaluateOnReadPeer(user: string, fn: string, args: string[]): Promise<Uint8Array> {
+    const s = this.session(user, true);
+    const unsigned = s.gateway.getNetwork(this.cfg.channel).getContract(this.cfg.chaincode).newProposal(fn, { arguments: args });
+    const proposal = s.gateway.newSignedProposal(unsigned.getBytes(), await s.signer(unsigned.getDigest()));
+    const signed = gwproto.ProposedTransaction.deserializeBinary(proposal.getBytes()).getProposal();
+    if (!signed) throw new Error('proposal missing SignedProposal');
+    const resp = await new Promise<peerproto.ProposalResponse>((resolve, reject) => {
+      this.readEndorser.processProposal(signed, { deadline: Date.now() + 5000 }, (err, r) => (err || !r ? reject(err ?? new Error('empty proposal response')) : resolve(r)));
+    });
+    const r = resp.getResponse();
+    if (!r || r.getStatus() >= 400) {
+      const message = `chaincode response ${r?.getStatus() ?? '?'}, ${r?.getMessage() ?? 'no response'}`;
+      const alias = this.cfg.readPeer?.hostAlias ?? this.cfg.peer.hostAlias;
+      throw Object.assign(new Error('evaluate on read peer failed'), {
+        code: grpc.status.UNKNOWN,
+        details: [{ address: alias, mspId: this.cfg.mspId, message }],
+      });
+    }
+    return r.getPayload_asU8();
   }
 
   async submit<T>(user: string, fn: string, args: string[], transient?: Transient): Promise<{ result: T; receipt: TxReceipt }> {
@@ -98,7 +130,7 @@ export class FabricLedger implements Ledger {
   async ordererBoundary(user: string): Promise<bigint> {
     const s = this.session(user, false);
     const env = await seekNewestEnvelope(this.cfg.channel, { mspId: s.mspId, certificate: s.certificate, signer: s.signer });
-    const r = await quorumNewest(this.orderers.list(), this.cfg.f + 1, (t) => this.orderers.newestBlock(t, env, 3000));
+    const r = await quorumNewest(this.orderers.list(), this.cfg.f, (t) => this.orderers.newestBlock(t, env, 3000));
     return r.newest;
   }
 
@@ -159,6 +191,7 @@ export class FabricLedger implements Ledger {
     for (const s of this.sessions.values()) s.gateway.close();
     this.sessions.clear();
     this.orderers.close();
+    this.readEndorser.close();
     this.submitPeer.close();
     if (this.readPeer !== this.submitPeer) this.readPeer.close();
   }

@@ -23,6 +23,12 @@ describe('toHttpError', () => {
     expect(e.body.message).not.toContain('chaincode response');
   });
 
+  it('maps missing private data to 503 with Retry-After', () => {
+    const e = toHttpError(withDetail('chaincode response 500, PHI_UNAVAILABLE: this peer holds no private data for R-1 yet'));
+    expect(e.status).toBe(503);
+    expect(e.retryAfter).toBeGreaterThan(0);
+  });
+
   it('maps the BFT quorum error to 503 with Retry-After', () => {
     const e = toHttpError(
       Object.assign(new Error('insufficient number of orderers could successfully process transaction to satisfy quorum requirement'), {

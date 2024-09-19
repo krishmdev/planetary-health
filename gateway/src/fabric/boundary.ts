@@ -6,9 +6,12 @@ import { Timestamp } from 'google-protobuf/google/protobuf/timestamp_pb.js';
 import { OrderingUnavailable } from './ledger.js';
 
 // The freshness boundary for a PHI read comes from the ordering service itself, not from any
-// peer: a Deliver request with SeekNewest returns the newest block an orderer has. We ask all
-// orderers and use the max over the first f+1 answers, so one lagging or Byzantine orderer can't
-// understate the height. An overstated height can only make the read wait and then fail with 503.
+// peer: a Deliver request with SeekNewest returns the newest block an orderer has. We ask all n
+// orderers, wait for n-f answers, and take the (f+1)-th largest. With at most f Byzantine
+// orderers, that value is no higher than some honest orderer's height, so a liar cannot inflate
+// the boundary and stall every read; and it is at least the height of an honest orderer that
+// answered. An honest orderer that is itself a few milliseconds behind can still pull the value
+// below the newest committed block; docs/threat-model.md describes that window.
 
 export interface OrdererTarget {
   name: string;
@@ -122,17 +125,18 @@ export class OrdererClients {
 
 export interface BoundaryResult {
   newest: bigint;
-  answered: string[];
+  answers: { name: string; n: bigint }[];
   failed: string[];
 }
 
-// quorumNewest resolves with the max newest-block over the first `need` orderers to answer.
+// quorumNewest waits for n-f answers and returns the (f+1)-th largest newest-block number.
 export async function quorumNewest(
   targets: OrdererTarget[],
-  need: number,
+  f: number,
   ask: (t: OrdererTarget) => Promise<bigint>,
 ): Promise<BoundaryResult> {
-  if (need > targets.length) throw new OrderingUnavailable(`need ${need} orderers, only ${targets.length} configured`);
+  const need = targets.length - f;
+  if (need < f + 1) throw new OrderingUnavailable(`${targets.length} orderers cannot tolerate f=${f}`);
   return new Promise((resolve, reject) => {
     const answers: { name: string; n: bigint }[] = [];
     const failed: string[] = [];
@@ -144,8 +148,8 @@ export async function quorumNewest(
           answers.push({ name: t.name, n });
           if (answers.length >= need) {
             settled = true;
-            const newest = answers.reduce((m, a) => (a.n > m ? a.n : m), answers[0]!.n);
-            resolve({ newest, answered: answers.map((a) => a.name), failed });
+            const sorted = [...answers].sort((a, b) => (a.n > b.n ? -1 : a.n < b.n ? 1 : 0));
+            resolve({ newest: sorted[f]!.n, answers, failed });
           }
         },
         (err: Error) => {
@@ -153,7 +157,7 @@ export async function quorumNewest(
           failed.push(`${t.name}: ${err.message}`);
           if (targets.length - failed.length < need) {
             settled = true;
-            reject(new OrderingUnavailable(`only ${answers.length} of the ${need} orderers needed answered: ${failed.join('; ')}`));
+            reject(new OrderingUnavailable(`only ${answers.length} of the ${need} orderer answers needed: ${failed.join('; ')}`));
           }
         },
       );

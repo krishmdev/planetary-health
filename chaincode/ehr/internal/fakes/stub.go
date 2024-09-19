@@ -32,11 +32,11 @@ type write struct {
 type Stub struct {
 	shim.ChaincodeStubInterface
 
-	State     map[string][]byte
-	Private   map[string]map[string][]byte
+	State   map[string][]byte
+	Private map[string]map[string][]byte
 	// Hashes mirrors the peer's separate store of private-data hashes (kept on every peer,
 	// including ones that never received the data).
-	Hashes map[string]map[string][]byte
+	Hashes    map[string]map[string][]byte
 	Transient map[string][]byte
 	Events    []Event
 
