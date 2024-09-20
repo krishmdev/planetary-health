@@ -1,0 +1,60 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.4"
+          cache-dependency-path: |
+            chaincode/ehr/go.sum
+            activator/go.sum
+      - name: chaincode
+        working-directory: chaincode/ehr
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go test ./... -cover
+      - name: activator
+        working-directory: activator
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go test ./... -race -cover
+
+  ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r lint
+      - run: pnpm -r test
+      - run: pnpm -C ui build
+
+  # Unit tests again with no network at all, to show they need none. The Fabric network,
+  # e2e and experiments do not run in CI (see README).
+  offline:
+    runs-on: ubuntu-latest
+    needs: [go, ts]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: gateway tests in a --network none container
+        run: docker run --rm --network none -v "$PWD:/w" -w /w node:22.16.0-slim sh -c "corepack enable >/dev/null 2>&1; node_modules/.bin/pnpm -r test || npx --offline pnpm -r test"
