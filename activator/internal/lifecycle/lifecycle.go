@@ -77,23 +77,24 @@ type groupUnit struct {
 }
 
 type Manager struct {
-	cfg    *config.Config
-	eng    engine.Engine
-	probe  readiness.Prober
-	met    *metrics.Metrics
-	now    func() time.Time
-	poll   time.Duration
-	sem    chan struct{}
-	modeMu sync.RWMutex
-	mode   config.Mode
-	apis   map[string]*apiUnit
-	groups map[string]*groupUnit
+	cfg      *config.Config
+	eng      engine.Engine
+	probe    readiness.Prober
+	met      *metrics.Metrics
+	now      func() time.Time
+	poll     time.Duration
+	sem      chan struct{}
+	modeMu   sync.RWMutex
+	mode     config.Mode
+	strategy config.Strategy
+	apis     map[string]*apiUnit
+	groups   map[string]*groupUnit
 }
 
 func New(cfg *config.Config, eng engine.Engine, probe readiness.Prober, met *metrics.Metrics) *Manager {
 	m := &Manager{
 		cfg: cfg, eng: eng, probe: probe, met: met, now: time.Now, poll: 200 * time.Millisecond,
-		sem: make(chan struct{}, cfg.MaxConcurrentWakes), mode: cfg.Mode,
+		sem: make(chan struct{}, cfg.MaxConcurrentWakes), mode: cfg.Mode, strategy: cfg.Strategy,
 		apis: map[string]*apiUnit{}, groups: map[string]*groupUnit{},
 	}
 	for i := range cfg.APIs {
@@ -119,6 +120,20 @@ func (m *Manager) Mode() config.Mode {
 func (m *Manager) SetMode(mode config.Mode) {
 	m.modeMu.Lock()
 	m.mode = mode
+	m.modeMu.Unlock()
+}
+
+func (m *Manager) Strategy() config.Strategy {
+	m.modeMu.RLock()
+	defer m.modeMu.RUnlock()
+	return m.strategy
+}
+
+// SetStrategy switches between stopping and pausing idle API containers (the harness uses it
+// to measure resume-from-pause separately from a cold start).
+func (m *Manager) SetStrategy(s config.Strategy) {
+	m.modeMu.Lock()
+	m.strategy = s
 	m.modeMu.Unlock()
 }
 
@@ -175,8 +190,10 @@ func (m *Manager) Sync(ctx context.Context) error {
 	return nil
 }
 
+// needsGroup is the endorsement group a request must find awake. In api mode the peers are
+// assumed always on; always_on also brings back a group that full mode put to sleep.
 func (m *Manager) needsGroup(u *apiUnit) *groupUnit {
-	if m.Mode() != config.ModeFull || u.cfg.Group == "" {
+	if m.Mode() == config.ModeAPI || u.cfg.Group == "" {
 		return nil
 	}
 	return m.groups[u.cfg.Group]
@@ -527,7 +544,7 @@ func (m *Manager) stopAPI(ctx context.Context, u *apiUnit, reason string, force 
 
 	var err error
 	target := Stopped
-	if m.cfg.Strategy == config.StrategyPause {
+	if m.Strategy() == config.StrategyPause {
 		target = Paused
 		err = m.eng.Pause(ctx, u.cfg.Container)
 	} else {

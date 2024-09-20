@@ -11,5 +11,5 @@ set -a; source "$ROOT/.env"; set +a
 "$here/create-raft-channel.sh"
 "$here/deploy-cc.sh" "$CHANNEL_BFT" "$CHANNEL_RAFT"
 "$here/add-peer.sh"
-(cd "$ROOT/gateway" && pnpm exec tsx src/seed.ts)
+(cd "$ROOT/gateway" && pnpm exec tsx src/seed.ts && CHANNEL="$CHANNEL_RAFT" pnpm exec tsx src/seed.ts)
 docker ps --format '{{.Names}}\t{{.Status}}' | sort

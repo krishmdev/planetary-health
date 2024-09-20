@@ -1,0 +1,26 @@
+{
+  "name": "@planetary-health/experiments",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "coldstart": "tsx src/coldstart.ts",
+    "throughput": "tsx src/throughput.ts",
+    "faults": "tsx src/faults.ts",
+    "idle": "tsx src/idle.ts",
+    "bft-demo": "tsx src/bftDemo.ts",
+    "report": "tsx src/report.ts",
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "1.14.5",
+    "@hyperledger/fabric-gateway": "1.12.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "5.0.1"
+  }
+}

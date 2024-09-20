@@ -103,7 +103,18 @@ func admin(mgr *lifecycle.Manager, met *metrics.Metrics) http.Handler {
 		writeJSON(w, http.StatusOK, map[string]any{"mode": mode, "units": units})
 	})
 	mux.HandleFunc("POST /_activator/mode", func(w http.ResponseWriter, r *http.Request) {
+		switch st := config.Strategy(r.URL.Query().Get("strategy")); st {
+		case "":
+		case config.StrategyStop, config.StrategyPause:
+			mgr.SetStrategy(st)
+		default:
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "strategy must be stop or pause"})
+			return
+		}
 		m := config.Mode(r.URL.Query().Get("mode"))
+		if m == "" {
+			m = mgr.Mode()
+		}
 		if r.URL.Query().Get("always_on") == "true" {
 			m = config.ModeAlwaysOn
 		}
@@ -123,7 +134,7 @@ func admin(mgr *lifecycle.Manager, met *metrics.Metrics) http.Handler {
 			}
 		}
 		mode, units := mgr.Status()
-		writeJSON(w, http.StatusOK, map[string]any{"mode": mode, "units": units})
+		writeJSON(w, http.StatusOK, map[string]any{"mode": mode, "strategy": mgr.Strategy(), "units": units})
 	})
 	return mux
 }

@@ -8,6 +8,28 @@ importers:
 
   .: {}
 
+  experiments:
+    dependencies:
+      '@grpc/grpc-js':
+        specifier: 1.14.5
+        version: 1.14.5
+      '@hyperledger/fabric-gateway':
+        specifier: 1.12.1
+        version: 1.12.1
+    devDependencies:
+      '@types/node':
+        specifier: 22.20.4
+        version: 22.20.4
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: 5.0.1
+        version: 5.0.1(@types/node@22.20.4)(vite@8.3.0(@types/node@22.20.4)(esbuild@0.28.2)(tsx@4.23.15))
+
   gateway:
     dependencies:
       '@grpc/grpc-js':
