@@ -57,4 +57,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: gateway tests in a --network none container
-        run: docker run --rm --network none -v "$PWD:/w" -w /w node:22.16.0-slim sh -c "corepack enable >/dev/null 2>&1; node_modules/.bin/pnpm -r test || npx --offline pnpm -r test"
+        run: |
+          docker run --rm --network none -v "$PWD:/w" -w /w node:22.16.0-slim sh -c \
+            'for p in gateway ui experiments; do (cd $p && node node_modules/vitest/vitest.mjs run) || exit 1; done'
+
