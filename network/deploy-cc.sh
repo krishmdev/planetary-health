@@ -9,5 +9,5 @@ channels=("$@")
 [ ${#channels[@]} -eq 0 ] && channels=("$CHANNEL_BFT")
 for ch in "${channels[@]}"; do
   ./network.sh deployCC -c "$ch" -ccn "$CC_NAME" -ccp "$ROOT/chaincode/ehr" -ccl go \
-    -cccg "$ROOT/chaincode/ehr/collections_config.json" -ccv 1.0 -ccs 1
+    -cccg "$ROOT/chaincode/ehr/collections_config.json" -ccv "${CC_VERSION:-1.0}" -ccs "${CC_SEQUENCE:-1}"
 done

@@ -150,26 +150,37 @@ export class FabricLedger implements Ledger {
     return r.newest;
   }
 
+  // The peer's Deliver service answers NOT_FOUND (404) when the start block is beyond its
+  // height instead of blocking, so poll until it has the block or the deadline passes.
   async waitForPeerBlock(user: string, block: bigint, timeoutMs: number, opts?: { readPeer?: boolean }): Promise<void> {
     const network = this.session(user, opts?.readPeer ?? true).gateway.getNetwork(this.cfg.channel);
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), timeoutMs);
-    let events: Awaited<ReturnType<typeof network.getFilteredBlockEvents>> | undefined;
-    try {
-      const wait = (async () => {
-        events = await network.getFilteredBlockEvents({ startBlock: block });
-        for await (const b of events) {
-          if (BigInt(b.getNumber()) >= block) return;
-        }
-        throw new Error('block event stream ended');
-      })();
-      const timeout = new Promise<never>((_, reject) =>
-        ac.signal.addEventListener('abort', () => reject(new FreshnessTimeout(block, timeoutMs))),
-      );
-      await Promise.race([wait, timeout]);
-    } finally {
-      clearTimeout(timer);
-      events?.close();
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw new FreshnessTimeout(block, timeoutMs);
+      let events: Awaited<ReturnType<typeof network.getFilteredBlockEvents>> | undefined;
+      let timer: NodeJS.Timeout | undefined;
+      try {
+        const got = await Promise.race([
+          (async () => {
+            events = await network.getFilteredBlockEvents({ startBlock: block });
+            for await (const b of events) {
+              if (BigInt(b.getNumber()) >= block) return true;
+            }
+            return false;
+          })(),
+          new Promise<false>((resolve) => {
+            timer = setTimeout(() => resolve(false), remaining);
+          }),
+        ]);
+        if (got) return;
+      } catch (err) {
+        if (!/404|NOT_FOUND/i.test(String((err as Error).message))) throw err;
+        await new Promise((r) => setTimeout(r, Math.min(100, Math.max(0, deadline - Date.now()))));
+      } finally {
+        clearTimeout(timer);
+        events?.close();
+      }
     }
   }
 

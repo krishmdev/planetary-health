@@ -2,8 +2,11 @@ import { createHash, randomBytes } from 'node:crypto';
 import * as grpc from '@grpc/grpc-js';
 import type { Signer } from '@hyperledger/fabric-gateway';
 import { common, msp, orderer } from '@hyperledger/fabric-protos';
-import { Timestamp } from 'google-protobuf/google/protobuf/timestamp_pb.js';
+import timestampPb from 'google-protobuf/google/protobuf/timestamp_pb.js';
 import { OrderingUnavailable } from './ledger.js';
+
+// google-protobuf ships CommonJS; Node's ESM loader only exposes the default export.
+const { Timestamp } = timestampPb;
 
 // The freshness boundary for a PHI read comes from the ordering service itself, not from any
 // peer: a Deliver request with SeekNewest returns the newest block an orderer has. We ask all n

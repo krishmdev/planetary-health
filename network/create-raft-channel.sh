@@ -27,7 +27,14 @@ for org in 1 2; do
     sleep 2
   done
 done
+# The new Raft channel answers SERVICE_UNAVAILABLE until it has elected a leader.
 set +u
-for org in 1 2; do . scripts/setAnchorPeer.sh $org "$CHANNEL_RAFT"; done
+for org in 1 2; do
+  for try in 1 2 3 4 5 6 7 8 9 10; do
+    ( . scripts/setAnchorPeer.sh $org "$CHANNEL_RAFT" ) >/dev/null 2>&1 && break
+    [ "$try" = 10 ] && { echo "anchor peer update for org$org failed" >&2; exit 1; }
+    sleep 3
+  done
+done
 set -u
 echo "channel $CHANNEL_RAFT ready"

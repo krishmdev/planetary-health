@@ -15,7 +15,7 @@ type Member struct {
 	Role         string `json:"role"`
 	Org          string `json:"org"`
 	EnrollmentID string `json:"enrollmentId"`
-	Specialty    string `json:"specialty,omitempty"`
+	Specialty    string `json:"specialty,omitempty" metadata:",optional"`
 	Active       bool   `json:"active"`
 	RegisteredBy string `json:"registeredBy"`
 	UpdatedAt    string `json:"updatedAt"`
@@ -32,7 +32,7 @@ type RecordMeta struct {
 	Version        int    `json:"version"`
 	PurgeRequested bool   `json:"purgeRequested"`
 	Purged         bool   `json:"purged"`
-	PurgedAt       string `json:"purgedAt,omitempty"`
+	PurgedAt       string `json:"purgedAt,omitempty" metadata:",optional"`
 }
 
 type Consent struct {
@@ -45,7 +45,7 @@ type Consent struct {
 	Status    string   `json:"status"`
 	CreatedAt string   `json:"createdAt"`
 	ExpiresAt string   `json:"expiresAt"`
-	RevokedAt string   `json:"revokedAt,omitempty"`
+	RevokedAt string   `json:"revokedAt,omitempty" metadata:",optional"`
 }
 
 type BreakGlass struct {
@@ -58,9 +58,9 @@ type BreakGlass struct {
 	CreatedAt   string `json:"createdAt"`
 	ExpiresAt   string `json:"expiresAt"`
 	Reviewed    bool   `json:"reviewed"`
-	Outcome     string `json:"outcome,omitempty"`
-	ReviewedBy  string `json:"reviewedBy,omitempty"`
-	ReviewNote  string `json:"reviewNote,omitempty"`
+	Outcome     string `json:"outcome,omitempty" metadata:",optional"`
+	ReviewedBy  string `json:"reviewedBy,omitempty" metadata:",optional"`
+	ReviewNote  string `json:"reviewNote,omitempty" metadata:",optional"`
 }
 
 // AccessGrant is the on-ledger authorization for one PHI delivery. It is written by a
@@ -80,8 +80,8 @@ type AccessGrant struct {
 	Status      string `json:"status"` // granted | delivered | revoked
 	CreatedAt   string `json:"createdAt"`
 	ExpiresAt   string `json:"expiresAt"`
-	DeliveredAt string `json:"deliveredAt,omitempty"`
-	DeliveryTx  string `json:"deliveryTx,omitempty"`
+	DeliveredAt string `json:"deliveredAt,omitempty" metadata:",optional"`
+	DeliveryTx  string `json:"deliveryTx,omitempty" metadata:",optional"`
 }
 
 const (
@@ -112,9 +112,9 @@ type IntegrityReport struct {
 	OnLedger    string `json:"onLedger"`
 	Supplied    string `json:"supplied"`
 	PrivateHash string `json:"privateHash"`
-	DataHash    string `json:"dataHash,omitempty"`
+	DataHash    string `json:"dataHash,omitempty" metadata:",optional"`
 	Match       bool   `json:"match"`
-	Reason      string `json:"reason,omitempty"`
+	Reason      string `json:"reason,omitempty" metadata:",optional"`
 }
 
 type ReconcileReport struct {

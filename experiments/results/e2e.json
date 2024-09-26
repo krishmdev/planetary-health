@@ -1,0 +1,307 @@
+{
+  "ran_at": "2024-09-23T21:30:36.750Z",
+  "passed": 27,
+  "failed": 0,
+  "steps": [
+    {
+      "name": "login: Org2 token rejected by Org1 gateway (401)",
+      "ok": true,
+      "detail": {
+        "status": 401,
+        "error": "UNAUTHENTICATED",
+        "message": "invalid or expired token"
+      },
+      "ms": 2
+    },
+    {
+      "name": "login: tampered token rejected (401)",
+      "ok": true,
+      "detail": {
+        "status": 401,
+        "error": "UNAUTHENTICATED",
+        "message": "invalid or expired token"
+      },
+      "ms": 9
+    },
+    {
+      "name": "login: expired token rejected (401)",
+      "ok": true,
+      "detail": {
+        "status": 401,
+        "error": "UNAUTHENTICATED",
+        "message": "invalid or expired token"
+      },
+      "ms": 14
+    },
+    {
+      "name": "identity: /me shows the certificate-derived identity",
+      "ok": true,
+      "detail": {
+        "id": "P-1001",
+        "role": "patient",
+        "org": "Org1MSP",
+        "enrollmentId": "alice",
+        "certId": "eDUwOTo6Q049YWxpY2UsT1U9Y2xpZW50OjpDTj1jYS5vcmcxLmV4YW1wbGUuY29tLE89b3JnMS5leGFtcGxlLmNvbSxMPUR1cmhhbSxTVD1Ob3J0aCBDYXJvbGluYSxDPVVT"
+      },
+      "ms": 11
+    },
+    {
+      "name": "PHI: doctor with consent gets a grant and a delivery",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "freshness": {
+          "grantBlock": "200",
+          "ordererNewest": "200",
+          "waitedForBlock": "200",
+          "waitMs": 45,
+          "enforced": true
+        },
+        "receipt": "recorded"
+      },
+      "ms": 513
+    },
+    {
+      "name": "PHI: replaying the same accessId returns 409",
+      "ok": true,
+      "detail": {
+        "status": 409,
+        "error": "GRANT_ALREADY_USED",
+        "message": "access grant A-9433532f26c2e598 was already used"
+      },
+      "ms": 5
+    },
+    {
+      "name": "PHI: grant used by a different user is denied",
+      "ok": true,
+      "detail": {
+        "status": 403,
+        "error": "ACCESS_DENIED",
+        "message": "access grant A-0c52ddd7dc3bb607 was issued to another user"
+      },
+      "ms": 153
+    },
+    {
+      "name": "subject substitution: Alice asking for Ben's records is denied (403)",
+      "ok": true,
+      "detail": {
+        "status": 403,
+        "error": "ACCESS_DENIED",
+        "message": "patients can only access their own records"
+      },
+      "ms": 12
+    },
+    {
+      "name": "role escalation: patient cannot create a record (403)",
+      "ok": true,
+      "detail": {
+        "status": 403,
+        "error": "ACCESS_DENIED",
+        "message": "role patient cannot call this transaction"
+      },
+      "ms": 27
+    },
+    {
+      "name": "role escalation: patient cannot use break-glass (403)",
+      "ok": true,
+      "detail": {
+        "status": 403,
+        "error": "ACCESS_DENIED",
+        "message": "role patient cannot call this transaction"
+      },
+      "ms": 10
+    },
+    {
+      "name": "minimum necessary: admin cannot read PHI (403)",
+      "ok": true,
+      "detail": {
+        "status": 403,
+        "error": "ACCESS_DENIED",
+        "message": "administrators cannot read or write PHI (minimum necessary)"
+      },
+      "ms": 22
+    },
+    {
+      "name": "cross-org: Org2 doctor without consent is denied (403)",
+      "ok": true,
+      "detail": {
+        "status": 403,
+        "error": "ACCESS_DENIED",
+        "message": "no active consent or emergency access for this record"
+      },
+      "ms": 80
+    },
+    {
+      "name": "cross-org: with consent, Org2 doctor reads through the Org2 gateway",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "basis": "consent:C-caf2d275aafea2c5",
+        "freshness": {
+          "grantBlock": "204",
+          "ordererNewest": "204",
+          "waitedForBlock": "204",
+          "waitMs": 31,
+          "enforced": true
+        }
+      },
+      "ms": 269
+    },
+    {
+      "name": "revoke after grant: delivery denied once consent is revoked",
+      "ok": true,
+      "detail": {
+        "status": 403,
+        "revokedInBlock": "207",
+        "body": {
+          "error": "ACCESS_DENIED",
+          "message": "no active consent or emergency access for this record"
+        }
+      },
+      "ms": 233
+    },
+    {
+      "name": "MVCC: a grant endorsed before a revocation but ordered after it is invalidated (409), then denied (403)",
+      "ok": true,
+      "detail": {
+        "endorsedTx": "710814c72f291218f06183dbae26579bc1f36c099244fb57cbcad73dc174e00c",
+        "revokedInBlock": "209",
+        "commitStatus": "PHANTOM_READ_CONFLICT",
+        "mapped": 409,
+        "retry": 403
+      },
+      "ms": 358
+    },
+    {
+      "name": "break-glass: doctor without consent gets 60-minute emergency access",
+      "ok": true,
+      "detail": {
+        "basis": "breakglass:G-86a00105c239b9a3",
+        "expiresAt": "2024-09-23T22:30:05.818Z"
+      },
+      "ms": 558
+    },
+    {
+      "name": "break-glass: grant lands in the patient org's review queue, not the other org's",
+      "ok": true,
+      "detail": {
+        "org1Queue": 1
+      },
+      "ms": 25
+    },
+    {
+      "name": "break-glass: \"unjustified\" review ends access immediately",
+      "ok": true,
+      "detail": {
+        "review": 200,
+        "read": 403
+      },
+      "ms": 155
+    },
+    {
+      "name": "audit: patient access log lists grants with actor and basis",
+      "ok": true,
+      "detail": {
+        "grants": 31
+      },
+      "ms": 11
+    },
+    {
+      "name": "audit: reconcile finds no delivery without an on-ledger receipt",
+      "ok": true,
+      "detail": {
+        "delivered": 12,
+        "localDeliveries": 7,
+        "missing": []
+      },
+      "ms": 1532
+    },
+    {
+      "name": "integrity: SHA-256 matches ledger and private data hash",
+      "ok": true,
+      "detail": {
+        "good": {
+          "recordId": "R-ea9b8dc38c78a1cd",
+          "onLedger": "c83d8d6833ea8eb4ed1296fed1b31ca9dedf37792eec64e0d9a0482ce9b6e75d",
+          "supplied": "c83d8d6833ea8eb4ed1296fed1b31ca9dedf37792eec64e0d9a0482ce9b6e75d",
+          "privateHash": "c83d8d6833ea8eb4ed1296fed1b31ca9dedf37792eec64e0d9a0482ce9b6e75d",
+          "dataHash": "c83d8d6833ea8eb4ed1296fed1b31ca9dedf37792eec64e0d9a0482ce9b6e75d",
+          "match": true
+        },
+        "bad": "supplied digest does not match the ledger digest"
+      },
+      "ms": 77
+    },
+    {
+      "name": "admin: register and enroll a new doctor through the CA",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "registeredIn": "216"
+      },
+      "ms": 1374
+    },
+    {
+      "name": "revocation layer 1: deactivated provider denied at the next block",
+      "ok": true,
+      "detail": {
+        "denied": {
+          "error": "ACCESS_DENIED",
+          "message": "D-drtemp8174 is deactivated"
+        },
+        "reactivated": 200
+      },
+      "ms": 513
+    },
+    {
+      "name": "revocation layer 2: CRL in Org1MSP makes the peers reject the certificate",
+      "ok": true,
+      "detail": {
+        "status": 403,
+        "error": "CERT_REJECTED",
+        "message": "the peer rejected this user's certificate"
+      },
+      "ms": 4189
+    },
+    {
+      "name": "freshness: lagging replica waits for the orderer boundary, then denies the revoked read",
+      "ok": true,
+      "detail": {
+        "consent": "C-d64d26d5caba17f5",
+        "revokeBlock": "235",
+        "status": 403,
+        "body": {
+          "error": "ACCESS_DENIED",
+          "message": "no active consent or emergency access for this record"
+        }
+      },
+      "ms": 2493
+    },
+    {
+      "name": "freshness: replica kept paused past the timeout returns 503, never stale PHI",
+      "ok": true,
+      "detail": {
+        "status": 503,
+        "error": "STALE_PEER",
+        "message": "peer did not commit block 250 within 15000 ms; refusing to serve possibly stale data"
+      },
+      "ms": 17842
+    },
+    {
+      "name": "control (FRESHNESS=off): the lagging replica serves the revoked read",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "revokeBlock": "264",
+        "freshness": {
+          "grantBlock": "253",
+          "ordererNewest": "264",
+          "waitedForBlock": "264",
+          "waitMs": 31,
+          "enforced": false
+        }
+      },
+      "ms": 1988
+    }
+  ]
+}

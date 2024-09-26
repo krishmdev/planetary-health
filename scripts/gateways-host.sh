@@ -16,8 +16,8 @@ run() {
 }
 run org1 ORG=org1 PORT=8080
 run org2 ORG=org2 PORT=8081
-run org1-replica ORG=org1 PORT=8082 READ_PEER_ENDPOINT=localhost:8051 READ_PEER_HOST_ALIAS=peer1.org1.example.com DATA_DIR="$root/.data/org1-replica"
-run org1-control ORG=org1 PORT=8083 READ_PEER_ENDPOINT=localhost:8051 READ_PEER_HOST_ALIAS=peer1.org1.example.com DATA_DIR="$root/.data/org1-control" FRESHNESS=off
+run org1-replica ORG=org1 PORT=8082 FRESHNESS_TIMEOUT_MS=15000 READ_PEER_ENDPOINT=localhost:8051 READ_PEER_HOST_ALIAS=peer1.org1.example.com DATA_DIR="$root/.data/org1-replica"
+run org1-control ORG=org1 PORT=8083 FRESHNESS_TIMEOUT_MS=15000 READ_PEER_ENDPOINT=localhost:8051 READ_PEER_HOST_ALIAS=peer1.org1.example.com DATA_DIR="$root/.data/org1-control" FRESHNESS=off
 trap 'kill "${pids[@]}" 2>/dev/null' EXIT INT TERM
 for port in 8080 8081 8082 8083; do
   for _ in $(seq 1 60); do curl -sf "localhost:$port/healthz" >/dev/null && break; sleep 0.5; done

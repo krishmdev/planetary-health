@@ -295,10 +295,20 @@ async function main() {
 }
 
 // Lagging read replica: the org1 replica gateway serves PHI reads from peer1.org1. Pause the
-// peer, commit a revocation, unpause, and read immediately.
+// peer, commit filler blocks and then a revocation, unpause, and read immediately. Blocks sent
+// during the pause wait in the paused container's socket buffers, so without the fillers the
+// replica would catch up within milliseconds; with them it has to validate and commit every
+// filler block, in order, before it sees the revocation.
 async function replicaChecks(alice: Api, recordId: string) {
   const viaReplica = await login(REPLICA, 'drchen');
   const peer = 'peer1.org1.example.com';
+  const cfg = loadConfig({ ...process.env, ORG: 'org1' });
+  const filler = new FabricLedger(cfg, new Wallet(cfg.walletDir, cfg.walletKey));
+  const fillBlocks = async () => {
+    for (let round = 0; round < 6; round++) {
+      await Promise.all(Array.from({ length: 10 }, () => filler.submit('probe', 'Ping', [])));
+    }
+  };
 
   const lagRun = async (label: string, api: Api, keepPaused: boolean) => {
     const consent = await grantConsent(alice, 'D-2001', ['lab']);
@@ -308,6 +318,7 @@ async function replicaChecks(alice: Api, recordId: string) {
     let d: Awaited<ReturnType<Api['call']>>;
     let revokeBlock = '';
     try {
+      await fillBlocks();
       // Revoke every lab consent Alice gave Chen, so only the seeded non-lab scope remains.
       const mine = await alice.call('GET', '/consents');
       for (const c of mine.body as any[]) {
@@ -325,6 +336,17 @@ async function replicaChecks(alice: Api, recordId: string) {
     await grantConsent(alice, 'D-2001', ['lab', 'note', 'rx'], ['read', 'append']);
     return { consent, revokeBlock, status: d.status, body: d.body };
   };
+  try {
+    await runReplicaSteps(lagRun, viaReplica);
+  } finally {
+    filler.close();
+  }
+}
+
+async function runReplicaSteps(
+  lagRun: (label: string, api: Api, keepPaused: boolean) => Promise<{ revokeBlock: string; status: number; body: any }>,
+  viaReplica: Api,
+) {
 
   await step('freshness: lagging replica waits for the orderer boundary, then denies the revoked read', async () => {
     const r = await lagRun('replica lag', viaReplica, false);

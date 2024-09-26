@@ -19,14 +19,14 @@ bootstrap:
 test: test-go test-ts
 
 test-go:
-	cd chaincode/ehr && go test ./... -cover
+	cd chaincode/ehr && go test -mod=mod ./... -cover
 	cd activator && go test ./... -race -cover
 
 test-ts:
 	pnpm -r test
 
 lint:
-	cd chaincode/ehr && go vet ./... && test -z "$$(gofmt -l .)"
+	cd chaincode/ehr && go vet -mod=mod ./... && test -z "$$(find . -path ./vendor -prune -o -name '*.go' -print0 | xargs -0 gofmt -l)"
 	cd activator && go vet ./... && test -z "$$(gofmt -l .)"
 	pnpm -r lint
 
