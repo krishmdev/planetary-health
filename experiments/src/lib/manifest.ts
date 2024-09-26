@@ -3,11 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const ROOT = path.resolve(import.meta.dirname, '../../..');
-const TOOL = '<local>';
+// Optional host-state recorder; set RUN_MANIFEST to its path to embed a manifest in each result.
+const TOOL = process.env.RUN_MANIFEST ?? '';
 
 // Host and workload state at the time of a run (lease holder, docker ps, top processes...).
 export function runManifest(extra: Record<string, string>): unknown {
-  if (!fs.existsSync(TOOL)) return { note: 'run_manifest.py not available on this machine', extra };
+  if (!TOOL || !fs.existsSync(TOOL)) return { note: 'RUN_MANIFEST not set; no host manifest recorded', extra };
   const args = [TOOL, ...Object.entries(extra).map(([k, v]) => `${k}=${v}`)];
   return JSON.parse(execFileSync('python3', args, { encoding: 'utf8' }));
 }

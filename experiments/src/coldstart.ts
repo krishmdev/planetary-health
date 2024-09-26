@@ -16,6 +16,8 @@ const arg = (name: string, dflt: string) => {
   return i > 0 ? process.argv[i + 1]! : dflt;
 };
 const N = Number(arg('n', '20'));
+// Full cold starts take tens of seconds each, so they can use fewer trials.
+const N_FULL = Number(arg('n-full', String(N)));
 const PATH = '/patients/P-1001/records';
 
 type Trial = Awaited<ReturnType<Session['timed']>>;
@@ -30,15 +32,15 @@ function breakdown(trials: Trial[]) {
   return { startMs: summary(start), readyMs: summary(ready) };
 }
 
-async function mode(name: string, prepare: () => Promise<void>, alice: Session) {
+async function mode(name: string, prepare: () => Promise<void>, alice: Session, n = N) {
   const trials: Trial[] = [];
-  for (let i = 0; i < N; i++) {
+  for (let i = 0; i < n; i++) {
     await alice.ensure();
     await prepare();
     const t = await alice.timed('GET', PATH);
     if (t.status !== 200) console.warn(`${name} trial ${i}: HTTP ${t.status} ${t.body.slice(0, 200)}`);
     trials.push(t);
-    process.stdout.write(`${name} ${i + 1}/${N}: ${Math.round(t.ms)} ms${t.cold ? ' (cold)' : ''}\n`);
+    process.stdout.write(`${name} ${i + 1}/${n}: ${Math.round(t.ms)} ms${t.cold ? ' (cold)' : ''}\n`);
     await sleep(300);
   }
   const ok = trials.filter((t) => t.status === 200);
@@ -80,6 +82,7 @@ async function main() {
         await scaleDown('ehrchannel');
       },
       alice,
+      N_FULL,
     ),
   );
 
@@ -103,7 +106,7 @@ async function main() {
   writeResult(
     'coldstart',
     {
-      description: `GET ${PATH} as Alice through the activator; ${N} trials per mode. Login happens before scale-down.`,
+      description: `GET ${PATH} as Alice through the activator; ${N} trials per mode (${N_FULL} for full-cold). Login happens before scale-down.`,
       rows,
       fullColdPhiRead: {
         trials: phiTrials.length,
@@ -112,7 +115,7 @@ async function main() {
         statuses: phiTrials.map((t) => t.status),
       },
     },
-    { device: 'docker-desktop-arm64', request: PATH, n: String(N) },
+    { device: 'docker-desktop-arm64', request: PATH, n: String(N), n_full: String(N_FULL) },
   );
 }
 

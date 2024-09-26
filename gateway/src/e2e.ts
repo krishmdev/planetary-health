@@ -80,6 +80,28 @@ const expect = (status: number, want: number | number[], detail?: unknown) => ({
 
 const inDays = (d: number) => new Date(Date.now() + d * 86400_000).toISOString();
 
+// Height of peer1.org1 for ehrchannel, from its operations port.
+async function replicaHeight(): Promise<number | null> {
+  try {
+    const r = await fetch('http://localhost:9450/metrics', { signal: AbortSignal.timeout(1000) });
+    const line = (await r.text()).split('\n').find((l) => l.startsWith('ledger_blockchain_height{channel="ehrchannel"}'));
+    return line ? Number(line.split(/\s+/).pop()) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Polls until peer1 has committed `block`; returns the elapsed milliseconds (null on timeout).
+async function catchUpMs(block: number, timeoutMs = 60_000): Promise<number | null> {
+  const t0 = performance.now();
+  while (performance.now() - t0 < timeoutMs) {
+    const h = await replicaHeight();
+    if (h !== null && h > block) return Math.round(performance.now() - t0);
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  return null;
+}
+
 function docker(...args: string[]) {
   execFileSync('docker', args, { stdio: 'ignore' });
 }
@@ -317,6 +339,7 @@ async function replicaChecks(alice: Api, recordId: string) {
     docker('pause', peer);
     let d: Awaited<ReturnType<Api['call']>>;
     let revokeBlock = '';
+    let catchUp: Promise<number | null> = Promise.resolve(null);
     try {
       await fillBlocks();
       // Revoke every lab consent Alice gave Chen, so only the seeded non-lab scope remains.
@@ -327,14 +350,17 @@ async function replicaChecks(alice: Api, recordId: string) {
           revokeBlock = rv.body.receipt?.blockNumber ?? revokeBlock;
         }
       }
-      if (!keepPaused) docker('unpause', peer);
+      if (!keepPaused) {
+        docker('unpause', peer);
+        catchUp = catchUpMs(Number(revokeBlock));
+      }
       d = await api.call('POST', `/access/${g.body.grant.accessId}/deliver`);
     } finally {
       if (keepPaused) docker('unpause', peer);
     }
     // Restore the seeded consent for later steps.
     await grantConsent(alice, 'D-2001', ['lab', 'note', 'rx'], ['read', 'append']);
-    return { consent, revokeBlock, status: d.status, body: d.body };
+    return { consent, revokeBlock, status: d.status, body: d.body, replicaCatchUpMs: await catchUp };
   };
   try {
     await runReplicaSteps(lagRun, viaReplica);
@@ -344,7 +370,7 @@ async function replicaChecks(alice: Api, recordId: string) {
 }
 
 async function runReplicaSteps(
-  lagRun: (label: string, api: Api, keepPaused: boolean) => Promise<{ revokeBlock: string; status: number; body: any }>,
+  lagRun: (label: string, api: Api, keepPaused: boolean) => Promise<{ revokeBlock: string; status: number; body: any; replicaCatchUpMs: number | null }>,
   viaReplica: Api,
 ) {
 
@@ -362,7 +388,7 @@ async function runReplicaSteps(
     const control = await login(CONTROL, 'drchen');
     await step('control (FRESHNESS=off): the lagging replica serves the revoked read', async () => {
       const r = await lagRun('control, freshness off', control, false);
-      return { ok: r.status === 200 && typeof r.body.record?.phi === 'string', detail: { status: r.status, revokeBlock: r.revokeBlock, freshness: r.body.freshness, error: r.body.error } };
+      return { ok: r.status === 200 && typeof r.body.record?.phi === 'string', detail: { status: r.status, revokeBlock: r.revokeBlock, replicaCatchUpMs: r.replicaCatchUpMs, freshness: r.body.freshness, error: r.body.error } };
     });
   } else {
     await step('control (FRESHNESS=off) gateway configured', async () => ({ ok: false, detail: 'set CONTROL_URL' }));

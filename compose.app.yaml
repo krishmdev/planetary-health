@@ -5,6 +5,8 @@ name: planetary-app
 
 x-gateway: &gateway
   image: planetary-gateway:dev
+  # Run as the host user that owns the 0600 wallet files instead of root.
+  user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
   build: { context: ., dockerfile: gateway/Dockerfile }
   networks: [fabric]
   restart: "no"
