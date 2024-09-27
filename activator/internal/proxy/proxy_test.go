@@ -84,7 +84,7 @@ func setup(t *testing.T, probe okProbe) (*httptest.Server, *countingEngine, *ato
 	m := lifecycle.New(cfg, eng, probe, met)
 	m.SetPoll(5 * time.Millisecond)
 	_ = m.Sync(context.Background())
-	h, err := proxy.New(&cfg.APIs[0], m, authgate.NewBucket(2, 0.001), met)
+	h, err := proxy.New(&cfg.APIs[0], m, authgate.NewBucket(2, 0.001), met, []string{"10.9.0.0/16"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,5 +166,25 @@ func TestLoginIsRateLimited(t *testing.T) {
 	}
 	if codes[http.StatusTooManyRequests] != 3 || codes[200] != 2 {
 		t.Fatalf("codes %v", codes)
+	}
+}
+
+func TestLoginLimitKeysOnForwardedForOnlyFromTrustedProxies(t *testing.T) {
+	srv, _, _ := setup(t, okProbe{})
+	post := func(xff string) int {
+		req, _ := http.NewRequest(http.MethodPost, srv.URL+"/auth/login", nil)
+		req.Header.Set("X-Forwarded-For", xff)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+	// The test client connects from 127.0.0.1, which is not trusted here, so spoofed
+	// X-Forwarded-For values don't buy extra attempts.
+	codes := []int{post("1.1.1.1"), post("2.2.2.2"), post("3.3.3.3")}
+	if codes[2] != http.StatusTooManyRequests {
+		t.Fatalf("untrusted X-Forwarded-For must be ignored: %v", codes)
 	}
 }

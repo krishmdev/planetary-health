@@ -19,18 +19,27 @@ import (
 )
 
 type Handler struct {
-	api    *config.API
-	mgr    *lifecycle.Manager
-	auth   *authgate.Verifier
-	login  *authgate.Bucket
-	met    *metrics.Metrics
-	rproxy *httputil.ReverseProxy
+	api     *config.API
+	mgr     *lifecycle.Manager
+	auth    *authgate.Verifier
+	login   *authgate.Bucket
+	met     *metrics.Metrics
+	rproxy  *httputil.ReverseProxy
+	proxies []*net.IPNet
 }
 
-func New(api *config.API, mgr *lifecycle.Manager, login *authgate.Bucket, met *metrics.Metrics) (*Handler, error) {
+func New(api *config.API, mgr *lifecycle.Manager, login *authgate.Bucket, met *metrics.Metrics, trustedProxies []string) (*Handler, error) {
 	u, err := url.Parse(api.Upstream)
 	if err != nil {
 		return nil, err
+	}
+	var proxies []*net.IPNet
+	for _, c := range trustedProxies {
+		_, n, err := net.ParseCIDR(c)
+		if err != nil {
+			return nil, fmt.Errorf("trusted proxy %q: %w", c, err)
+		}
+		proxies = append(proxies, n)
 	}
 	rp := httputil.NewSingleHostReverseProxy(u)
 	rp.FlushInterval = -1 // stream SSE immediately
@@ -38,7 +47,7 @@ func New(api *config.API, mgr *lifecycle.Manager, login *authgate.Bucket, met *m
 		writeErr(w, http.StatusBadGateway, "UPSTREAM_ERROR", err.Error(), 0)
 	}
 	return &Handler{api: api, mgr: mgr, auth: authgate.NewVerifier(api.JWT.Secret, api.JWT.Issuer, api.JWT.Audience),
-		login: login, met: met, rproxy: rp}, nil
+		login: login, met: met, rproxy: rp, proxies: proxies}, nil
 }
 
 func writeErr(w http.ResponseWriter, status int, code, msg string, retryAfter int) {
@@ -50,12 +59,32 @@ func writeErr(w http.ResponseWriter, status int, code, msg string, retryAfter in
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": code, "message": msg})
 }
 
-func clientIP(r *http.Request) string {
+// clientIP keys the login rate limit. Behind a trusted proxy (nginx for the UI) every request
+// comes from the proxy's address, so use the last X-Forwarded-For hop it appended instead.
+func (h *Handler) clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		host = r.RemoteAddr
 	}
-	return host
+	ip := net.ParseIP(host)
+	if ip == nil || !h.trusted(ip) {
+		return host
+	}
+	xff := r.Header.Get("X-Forwarded-For")
+	if xff == "" {
+		return host
+	}
+	parts := strings.Split(xff, ",")
+	return strings.TrimSpace(parts[len(parts)-1])
+}
+
+func (h *Handler) trusted(ip net.IP) bool {
+	for _, n := range h.proxies {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 func bearer(r *http.Request) string {
@@ -78,7 +107,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"activator": "ok", "unit": name, "units": units})
 		return
 	case r.URL.Path == "/auth/login":
-		if !h.login.Allow(clientIP(r)) {
+		if !h.login.Allow(h.clientIP(r)) {
 			h.met.Rejections.WithLabelValues(name, "login_rate").Inc()
 			writeErr(w, http.StatusTooManyRequests, "RATE_LIMITED", "too many login attempts", 2)
 			return

@@ -72,6 +72,7 @@ type groupUnit struct {
 	op           sync.Mutex
 	mu           sync.Mutex
 	state        State
+	inflight     int // requests currently using the group; the reaper won't stop it under them
 	lastActivity time.Time
 	wake         *call
 }
@@ -212,6 +213,19 @@ func (m *Manager) Acquire(ctx context.Context, name string, shallow bool) (Activ
 		g = m.needsGroup(u)
 	}
 	var act Activation
+	if g != nil {
+		g.mu.Lock()
+		g.inflight++
+		g.mu.Unlock()
+	}
+	releaseGroup := func() {
+		if g != nil {
+			g.mu.Lock()
+			g.inflight--
+			g.lastActivity = m.now()
+			g.mu.Unlock()
+		}
+	}
 	u.mu.Lock()
 	u.inflight++
 	u.lastActivity = m.now()
@@ -225,11 +239,14 @@ func (m *Manager) Acquire(ctx context.Context, name string, shallow bool) (Activ
 		}
 		if u.state == Ready && (shallow || (u.deep && groupReady)) {
 			u.mu.Unlock()
-			return act, m.releaser(u), nil
+			rel := m.releaser(u)
+			var once sync.Once
+			return act, func() { once.Do(func() { rel(); releaseGroup() }) }, nil
 		}
 		if u.waiting >= m.cfg.QueueLimit {
 			u.inflight--
 			u.mu.Unlock()
+			releaseGroup()
 			m.met.Rejections.WithLabelValues(name, "queue_full").Inc()
 			return Activation{}, nil, ErrQueueFull
 		}
@@ -256,6 +273,7 @@ func (m *Manager) Acquire(ctx context.Context, name string, shallow bool) (Activ
 			u.inflight--
 			u.lastActivity = m.now()
 			u.mu.Unlock()
+			releaseGroup()
 			return Activation{}, nil, err
 		}
 		// A request that joined a shallow (login) activation loops once more for the full one.
@@ -566,7 +584,9 @@ func (m *Manager) stopGroup(ctx context.Context, g *groupUnit, reason string) er
 	g.op.Lock()
 	defer g.op.Unlock()
 	g.mu.Lock()
-	if g.state == Waking {
+	// Re-checked under the lock: a request may have started using the group after the reaper
+	// decided it was idle.
+	if g.state == Waking || g.inflight > 0 || (reason == "idle" && m.now().Sub(g.lastActivity) < m.cfg.PeerIdleTimeout) {
 		g.mu.Unlock()
 		return ErrBusy
 	}

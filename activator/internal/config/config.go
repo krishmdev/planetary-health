@@ -71,6 +71,8 @@ type Config struct {
 	QueueLimit         int              `yaml:"queue_limit"`
 	LoginBurst         int              `yaml:"login_burst"`
 	LoginPerSecond     float64          `yaml:"login_per_second"`
+	TrustedProxies     []string         `yaml:"trusted_proxies"`
+	AdminToken         string           `yaml:"-"`
 	APIs               []API            `yaml:"apis"`
 	Groups             map[string]Group `yaml:"groups"`
 }
@@ -92,6 +94,8 @@ func Parse(b []byte, getenv func(string) string) (*Config, error) {
 	if err := yaml.Unmarshal(b, c); err != nil {
 		return nil, err
 	}
+	// The admin API can stop containers, so it needs a token (X-Activator-Token).
+	c.AdminToken = getenv("ACTIVATOR_ADMIN_TOKEN")
 	if m := getenv("ACTIVATOR_MODE"); m != "" {
 		c.Mode = Mode(m)
 	}
@@ -149,6 +153,9 @@ func (c *Config) validate(getenv func(string) string) error {
 		if len(a.JWT.Secret) < 32 {
 			return fmt.Errorf("api %s: %s must hold a secret of at least 32 bytes", a.Name, a.JWT.SecretEnv)
 		}
+	}
+	if len(c.AdminToken) < 16 {
+		return fmt.Errorf("ACTIVATOR_ADMIN_TOKEN must be set (at least 16 characters)")
 	}
 	if c.MaxConcurrentWakes < 1 {
 		return fmt.Errorf("max_concurrent_wakes must be >= 1")

@@ -14,7 +14,7 @@ func TestParseShippedConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := strings.Repeat("s", 32)
-	c, err := Parse(b, env(map[string]string{"ORG1_JWT_SECRET": s, "ORG2_JWT_SECRET": s, "ACTIVATOR_MODE": "full", "ACTIVATOR_IDLE_TIMEOUT": "5s"}))
+	c, err := Parse(b, env(map[string]string{"ORG1_JWT_SECRET": s, "ORG2_JWT_SECRET": s, "ACTIVATOR_ADMIN_TOKEN": s, "ACTIVATOR_MODE": "full", "ACTIVATOR_IDLE_TIMEOUT": "5s"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestValidation(t *testing.T) {
 		"no jwt":       "apis:\n  - {name: a, listen: ':1', upstream: 'http://x', container: c}\n",
 	}
 	for name, y := range cases {
-		e := map[string]string{"S": s}
+		e := map[string]string{"S": s, "ACTIVATOR_ADMIN_TOKEN": s}
 		if name == "short secret" {
 			e["S"] = "short"
 		}
@@ -45,7 +45,10 @@ func TestValidation(t *testing.T) {
 			t.Errorf("%s: want error", name)
 		}
 	}
-	if _, err := Parse([]byte(base), env(map[string]string{"S": s})); err != nil {
+	if _, err := Parse([]byte(base), env(map[string]string{"S": s, "ACTIVATOR_ADMIN_TOKEN": s})); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := Parse([]byte(base), env(map[string]string{"S": s})); err == nil {
+		t.Fatal("a missing admin token must be rejected")
 	}
 }

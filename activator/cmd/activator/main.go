@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"flag"
 	"log/slog"
@@ -48,14 +49,14 @@ func main() {
 	var servers []*http.Server
 	for i := range cfg.APIs {
 		api := &cfg.APIs[i]
-		h, err := proxy.New(api, mgr, login, met)
+		h, err := proxy.New(api, mgr, login, met, cfg.TrustedProxies)
 		if err != nil {
 			log.Error("proxy", "api", api.Name, "err", err)
 			os.Exit(1)
 		}
 		servers = append(servers, &http.Server{Addr: api.Listen, Handler: h, ReadHeaderTimeout: 10 * time.Second})
 	}
-	servers = append(servers, &http.Server{Addr: cfg.AdminListen, Handler: admin(mgr, met), ReadHeaderTimeout: 10 * time.Second})
+	servers = append(servers, &http.Server{Addr: cfg.AdminListen, Handler: requireToken(cfg.AdminToken, admin(mgr, met)), ReadHeaderTimeout: 10 * time.Second})
 	for _, s := range servers {
 		go func() {
 			if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -137,6 +138,18 @@ func admin(mgr *lifecycle.Manager, met *metrics.Metrics) http.Handler {
 		writeJSON(w, http.StatusOK, map[string]any{"mode": mode, "strategy": mgr.Strategy(), "units": units})
 	})
 	return mux
+}
+
+// requireToken guards the admin API, which can stop containers: a constant-time token check
+// on X-Activator-Token for every route, /metrics included.
+func requireToken(token string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Activator-Token")), []byte(token)) != 1 {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "missing or wrong X-Activator-Token"})
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
