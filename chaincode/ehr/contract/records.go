@@ -2,6 +2,7 @@ package contract
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"strings"
@@ -79,6 +80,12 @@ func (c *EHRContract) CreateRecord(ctx Ctx, pid, recordType string) (*RecordMeta
 	if err != nil {
 		return nil, err
 	}
+	// Checked before the policy: a backdated proposal could otherwise append under an expired
+	// consent or break-glass grant.
+	now, err := freshTxTime(ctx)
+	if err != nil {
+		return nil, err
+	}
 	if _, err := mustAuthorize(ctx, actor, patient, recordType, ActionAppend); err != nil {
 		return nil, err
 	}
@@ -93,8 +100,7 @@ func (c *EHRContract) CreateRecord(ctx Ctx, pid, recordType string) (*RecordMeta
 	if len(phi) > 64*1024 {
 		return nil, errInvalid("PHI payload over 64 KiB")
 	}
-	now, err := txTime(ctx)
-	if err != nil {
+	if err := checkEnvelope(phi); err != nil {
 		return nil, err
 	}
 	rid := newID(ctx, "R-")
@@ -300,6 +306,26 @@ func (c *EHRContract) PurgeRecordPHI(ctx Ctx, rid string) (*RecordMeta, error) {
 		return nil, err
 	}
 	return m, emit(ctx, "RecordPurged", m)
+}
+
+// phiEnvelope is what the gateway puts in the transient map: the record plus 32 random bytes.
+// The public digest covers both, so a channel member can't confirm a guess at low-entropy PHI
+// (a common drug and dose, say) by hashing candidates.
+type phiEnvelope struct {
+	Salt string          `json:"salt"`
+	Data json.RawMessage `json:"data"`
+}
+
+func checkEnvelope(b []byte) error {
+	var e phiEnvelope
+	if err := json.Unmarshal(b, &e); err != nil || len(e.Data) == 0 {
+		return errInvalid("PHI must be a {salt, data} envelope")
+	}
+	salt, err := base64.StdEncoding.DecodeString(e.Salt)
+	if err != nil || len(salt) < 32 {
+		return errInvalid("PHI envelope needs a base64 salt of at least 32 bytes")
+	}
+	return nil
 }
 
 func mustJSON(v any) string {

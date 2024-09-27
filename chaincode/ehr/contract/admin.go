@@ -131,8 +131,13 @@ func (c *EHRContract) setActive(ctx Ctx, id string, active bool, onlyRole string
 	return m, emit(ctx, "MemberStatusChanged", m)
 }
 
+// GetMember looks up a registry entry. Provider entries are a public directory; that someone is
+// a patient at a hospital is itself PHI, so patient entries are visible only to the patient,
+// their org's admins and clinicians with consent or emergency access; admin entries only to
+// admins of the same org.
 func (c *EHRContract) GetMember(ctx Ctx, id string) (*Member, error) {
-	if _, err := currentActor(ctx); err != nil {
+	actor, err := currentActor(ctx)
+	if err != nil {
 		return nil, err
 	}
 	for _, role := range memberRoles {
@@ -140,9 +145,26 @@ func (c *EHRContract) GetMember(ctx Ctx, id string) (*Member, error) {
 		if err != nil {
 			return nil, err
 		}
-		if m != nil {
-			return m, nil
+		if m == nil {
+			continue
 		}
+		switch role {
+		case RoleDoctor:
+			return m, nil
+		case RoleAdmin:
+			if actor.Role == RoleAdmin && actor.Org == m.Org {
+				return m, nil
+			}
+		case RolePatient:
+			d, err := authorize(ctx, actor, m, "", ActionMeta)
+			if err != nil {
+				return nil, err
+			}
+			if d.Allowed {
+				return m, nil
+			}
+		}
+		return nil, errDenied("not allowed to look up %s", id)
 	}
 	return nil, errNotFound("member %s", id)
 }

@@ -100,7 +100,7 @@ func (c *EHRContract) ReadRecordPHI(ctx Ctx, accessID string) (*PHIResponse, err
 	case GrantDelivered:
 		return nil, errDenied("access grant %s was already used", accessID)
 	}
-	now, err := txTime(ctx)
+	now, err := freshTxTime(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -162,6 +162,9 @@ func (c *EHRContract) RecordDelivery(ctx Ctx, accessID string) (*AccessGrant, er
 	}
 	if g.Status == GrantDelivered {
 		return nil, errConflict("delivery for %s already recorded", accessID)
+	}
+	if g.Status == GrantRevoked {
+		return nil, errDenied("access grant %s was revoked", accessID)
 	}
 	now, err := txTime(ctx)
 	if err != nil {

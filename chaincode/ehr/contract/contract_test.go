@@ -2,6 +2,7 @@ package contract_test
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"strings"
@@ -81,9 +82,15 @@ func (w *world) grantConsent(patient, grantee string, types, actions []string) *
 
 func (w *world) createRecord(doctor, pid, typ, phi string) *contract.RecordMeta {
 	w.t.Helper()
-	m, err := w.cc.CreateRecord(w.asWith(doctor, map[string][]byte{"phi": []byte(phi)}), pid, typ)
+	m, err := w.cc.CreateRecord(w.asWith(doctor, map[string][]byte{"phi": seal(phi)}), pid, typ)
 	require.NoError(w.t, err)
 	return m
+}
+
+// seal wraps PHI the way the gateway does before it goes into the transient map.
+func seal(phi string) []byte {
+	data, _ := json.Marshal(phi)
+	return []byte(`{"salt":"` + base64.StdEncoding.EncodeToString(make([]byte, 32)) + `","data":` + string(data) + `}`)
 }
 
 func requireCode(t *testing.T, err error, code string) {
@@ -102,14 +109,14 @@ func seeded(t *testing.T) (*world, *contract.RecordMeta) {
 
 func TestCreateRecordKeepsPHIOffLedger(t *testing.T) {
 	w, rec := seeded(t)
-	phi := `{"test":"HbA1c","value":"6.1%"}`
-	sum := sha256.Sum256([]byte(phi))
+	sealed := w.stub.Private["PHICollection"][rec.RecordID]
+	sum := sha256.Sum256(sealed)
 	require.Equal(t, hex.EncodeToString(sum[:]), rec.PHISha256)
 	require.Equal(t, "R-"+w.stub.GetTxID()[:16], rec.RecordID, "IDs derive from the tx ID")
 	for k, v := range w.stub.State {
 		require.NotContains(t, string(v), "HbA1c", "public key %q holds PHI", k)
 	}
-	require.Equal(t, []byte(phi), w.stub.Private["PHICollection"][rec.RecordID])
+	require.Contains(t, string(sealed), "HbA1c")
 	require.Equal(t, "RecordCreated", w.stub.LastEvent().Name)
 }
 
@@ -118,11 +125,11 @@ func TestCreateRecordValidation(t *testing.T) {
 	w.grantConsent("alice", "D-2001", []string{"lab"}, []string{"append"})
 	_, err := w.cc.CreateRecord(w.as("chen"), "P-1001", "lab")
 	requireCode(t, err, "INVALID")
-	_, err = w.cc.CreateRecord(w.asWith("chen", map[string][]byte{"phi": []byte("x")}), "P-1001", "dna")
+	_, err = w.cc.CreateRecord(w.asWith("chen", map[string][]byte{"phi": seal("x")}), "P-1001", "dna")
 	requireCode(t, err, "INVALID")
-	_, err = w.cc.CreateRecord(w.asWith("chen", map[string][]byte{"phi": []byte("x")}), "P-1001", "imaging")
+	_, err = w.cc.CreateRecord(w.asWith("chen", map[string][]byte{"phi": seal("x")}), "P-1001", "imaging")
 	requireCode(t, err, "ACCESS_DENIED")
-	_, err = w.cc.CreateRecord(w.asWith("chen", map[string][]byte{"phi": []byte("x")}), "P-9999", "lab")
+	_, err = w.cc.CreateRecord(w.asWith("chen", map[string][]byte{"phi": seal("x")}), "P-9999", "lab")
 	requireCode(t, err, "NOT_FOUND")
 	big := make([]byte, 65*1024)
 	_, err = w.cc.CreateRecord(w.asWith("chen", map[string][]byte{"phi": big}), "P-1001", "lab")
@@ -189,7 +196,7 @@ func TestSubjectSubstitution(t *testing.T) {
 
 func TestRoleEscalation(t *testing.T) {
 	w, rec := seeded(t)
-	_, err := w.cc.CreateRecord(w.asWith("alice", map[string][]byte{"phi": []byte("x")}), "P-1001", "lab")
+	_, err := w.cc.CreateRecord(w.asWith("alice", map[string][]byte{"phi": seal("x")}), "P-1001", "lab")
 	requireCode(t, err, "ACCESS_DENIED")
 	_, err = w.cc.RequestEmergencyAccess(w.as("alice"), "P-1002", "I need this urgently")
 	requireCode(t, err, "ACCESS_DENIED")
@@ -302,6 +309,8 @@ func TestPatientRevokesOutstandingGrants(t *testing.T) {
 	require.Len(t, revoked, 1)
 	require.Equal(t, g1.AccessID, revoked[0].AccessID)
 	_, err = w.cc.ReadRecordPHI(w.as("chen"), g1.AccessID)
+	requireCode(t, err, "ACCESS_DENIED")
+	_, err = w.cc.RecordDelivery(w.as("chen"), g1.AccessID)
 	requireCode(t, err, "ACCESS_DENIED")
 	_, err = w.cc.RevokeAccessGrants(w.as("chen"))
 	requireCode(t, err, "ACCESS_DENIED")
@@ -463,7 +472,7 @@ func (w *world) createRecordWithBreakGlass(t *testing.T) *contract.RecordMeta {
 	require.NoError(t, err)
 	rec := w.createRecord("chen", "P-1001", "allergy", "penicillin")
 	w.advance(61 * time.Minute)
-	_, err = w.cc.CreateRecord(w.asWith("chen", map[string][]byte{"phi": []byte("x")}), "P-1001", "note")
+	_, err = w.cc.CreateRecord(w.asWith("chen", map[string][]byte{"phi": seal("x")}), "P-1001", "note")
 	requireCode(t, err, "ACCESS_DENIED")
 	return rec
 }
@@ -480,7 +489,7 @@ func TestIntegrity(t *testing.T) {
 
 	g, err := w.cc.RequestAccess(w.as("chen"), rec.RecordID, "review")
 	require.NoError(t, err)
-	w.stub.Private["PHICollection"][rec.RecordID] = []byte(`{"test":"HbA1c","value":"4.0%"}`)
+	w.stub.Private["PHICollection"][rec.RecordID] = seal(`{"test":"HbA1c","value":"4.0%"}`)
 	_, err = w.cc.ReadRecordPHI(w.as("chen"), g.AccessID)
 	requireCode(t, err, "INTEGRITY")
 	r, err = w.cc.VerifyRecordIntegrity(w.as("chen"), rec.RecordID, rec.PHISha256)
@@ -489,7 +498,9 @@ func TestIntegrity(t *testing.T) {
 	require.Contains(t, r.Reason, "stored private data")
 
 	// The peer's hash store disagreeing with the ledger is caught too.
-	w.stub.Private["PHICollection"][rec.RecordID] = []byte(`{"test":"HbA1c","value":"6.1%"}`)
+	w.stub.Private["PHICollection"][rec.RecordID] = seal(`{"test":"HbA1c","value":"6.1%"}`)
+	good := sha256.Sum256(w.stub.Private["PHICollection"][rec.RecordID])
+	rec.PHISha256 = hex.EncodeToString(good[:])
 	w.stub.Hashes["PHICollection"][rec.RecordID] = make([]byte, 32)
 	r, err = w.cc.VerifyRecordIntegrity(w.as("chen"), rec.RecordID, rec.PHISha256)
 	require.NoError(t, err)
@@ -569,6 +580,22 @@ func TestRegistry(t *testing.T) {
 	m, err := w.cc.GetMember(w.as("alice"), "D-3001")
 	require.NoError(t, err)
 	require.Equal(t, "Org2MSP", m.Org)
+	// Patient entries are not a public directory.
+	_, err = w.cc.GetMember(w.as("alice"), "P-1002")
+	requireCode(t, err, "ACCESS_DENIED")
+	_, err = w.cc.GetMember(w.as("rivera"), "P-1001")
+	requireCode(t, err, "ACCESS_DENIED")
+	_, err = w.cc.GetMember(w.as("omar"), "P-1001")
+	requireCode(t, err, "ACCESS_DENIED")
+	_, err = w.cc.GetMember(w.as("alice"), "A-1001")
+	requireCode(t, err, "ACCESS_DENIED")
+	_, err = w.cc.GetMember(w.as("ada"), "P-1001")
+	require.NoError(t, err)
+	_, err = w.cc.GetMember(w.as("alice"), "P-1001")
+	require.NoError(t, err)
+	w.grantConsent("alice", "D-3001", []string{"lab"}, []string{"read"})
+	_, err = w.cc.GetMember(w.as("rivera"), "P-1001")
+	require.NoError(t, err)
 	_, err = w.cc.GetMember(w.as("alice"), "D-0000")
 	requireCode(t, err, "NOT_FOUND")
 	who, err := w.cc.WhoAmI(w.as("rivera"))
@@ -592,6 +619,8 @@ func TestBackdatedProposalsRejected(t *testing.T) {
 	requireCode(t, err, "INVALID")
 	_, err = w.cc.RequestEmergencyAccess(w.as("rivera"), "P-1001", "backdated emergency reason")
 	requireCode(t, err, "INVALID")
+	_, err = w.cc.CreateRecord(w.asWith("chen", map[string][]byte{"phi": seal("backdated note")}), "P-1001", "lab")
+	requireCode(t, err, "INVALID")
 	// Small skew is fine.
 	contract.WallClock = func() time.Time { return w.now.Add(90 * time.Second) }
 	_, err = w.cc.RequestAccess(w.as("chen"), rec.RecordID, "ok")
@@ -608,4 +637,18 @@ func TestMissingPrivateDataIsUnavailableNotNotFound(t *testing.T) {
 	r, err := w.cc.VerifyRecordIntegrity(w.as("alice"), rec.RecordID, rec.PHISha256)
 	require.NoError(t, err)
 	require.Contains(t, r.Reason, "no copy")
+}
+
+func TestPHIMustBeSalted(t *testing.T) {
+	w := newWorld(t)
+	w.grantConsent("alice", "D-2001", []string{"rx"}, []string{"append"})
+	for _, bad := range []string{`{"drug":"Atorvastatin"}`, `{"salt":"c2hvcnQ=","data":"x"}`, `{"salt":"` + base64.StdEncoding.EncodeToString(make([]byte, 32)) + `"}`} {
+		_, err := w.cc.CreateRecord(w.asWith("chen", map[string][]byte{"phi": []byte(bad)}), "P-1001", "rx")
+		requireCode(t, err, "INVALID")
+	}
+	// Same content, different salts: different public digests.
+	a := w.createRecord("chen", "P-1001", "rx", "atorvastatin 20 mg")
+	b, err := w.cc.CreateRecord(w.asWith("chen", map[string][]byte{"phi": []byte(`{"salt":"` + base64.StdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")) + `","data":"atorvastatin 20 mg"}`)}), "P-1001", "rx")
+	require.NoError(t, err)
+	require.NotEqual(t, a.PHISha256, b.PHISha256)
 }
