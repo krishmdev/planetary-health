@@ -83,7 +83,7 @@ export async function newKeyAndCsr(commonName: string): Promise<{ csr: string; p
     signingAlgorithm: { name: 'ECDSA', hash: 'SHA-256' },
   });
   const pkcs8 = Buffer.from(await webcrypto.subtle.exportKey('pkcs8', keys.privateKey));
-  const pem = `-----BEGIN PRIVATE KEY-----\n${pkcs8.toString('base64').match(/.{1,64}/g)!.join('\n')}\n-----END PRIVATE KEY-----\n`;
+  const pem = createPrivateKey({ key: pkcs8, format: 'der', type: 'pkcs8' }).export({ format: 'pem', type: 'pkcs8' }).toString();
   return { csr: csr.toString('pem'), privateKey: pem };
 }
 

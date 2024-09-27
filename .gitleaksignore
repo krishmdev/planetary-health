@@ -1,0 +1,2 @@
+# PEM header in a template literal (no key material); removed from ca.ts since.
+ff4c9df1115423fab639643683f412cc13bba50f:gateway/src/fabric/ca.ts:private-key:86
