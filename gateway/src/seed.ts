@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { type Config, loadConfig, type OrgKey } from './config.js';
+import { sealPhi } from './envelope.js';
 import { CaError, FabricCA } from './fabric/ca.js';
 import { FabricLedger } from './fabric/client.js';
 import { toHttpError } from './fabric/errors.js';
@@ -116,7 +117,7 @@ async function seedData() {
       ['rx', { drug: 'Atorvastatin', dose: '20 mg', frequency: 'once daily', days: 90 }],
     ];
     for (const [type, phi] of records) {
-      const r = await ledger.submit<{ recordId: string }>('drchen', 'CreateRecord', ['P-1001', type], { phi: Buffer.from(JSON.stringify(phi)) });
+      const r = await ledger.submit<{ recordId: string }>('drchen', 'CreateRecord', ['P-1001', type], { phi: sealPhi(JSON.stringify(phi)) });
       console.log(`  record ${r.result.recordId} (${type}) in block ${r.receipt.blockNumber}`);
     }
   } finally {

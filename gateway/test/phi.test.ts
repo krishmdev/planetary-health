@@ -206,3 +206,36 @@ describe('PHI grant and delivery', () => {
     expect(h.ledger.waitedFor).toHaveLength(0);
   });
 });
+
+describe('PHI envelope and events', () => {
+  it('seals record content with a fresh salt and never passes PHI as an argument', async () => {
+    const h = await harness();
+    h.ledger.on('CreateRecord', (_u, _a, t) => ({ recordId: 'R-9', transientPhi: Buffer.from(t!.phi as Uint8Array).toString() }));
+    const auth = { Authorization: `Bearer ${await h.token('drchen', 'doctor', 'D-2001')}` };
+    const a = await request(h.app).post('/patients/P-1001/records').set(auth).send({ type: 'rx', phi: { drug: 'Atorvastatin', dose: '20 mg' } });
+    const b = await request(h.app).post('/patients/P-1001/records').set(auth).send({ type: 'rx', phi: { drug: 'Atorvastatin', dose: '20 mg' } });
+    const call = h.ledger.calls.find((c) => c.fn === 'CreateRecord')!;
+    expect(call.args.join(' ')).not.toContain('Atorvastatin');
+    const ea = JSON.parse(a.body.record.transientPhi);
+    const eb = JSON.parse(b.body.record.transientPhi);
+    expect(Buffer.from(ea.salt, 'base64')).toHaveLength(32);
+    expect(ea.salt).not.toBe(eb.salt);
+    expect(JSON.parse(ea.data)).toEqual({ drug: 'Atorvastatin', dose: '20 mg' });
+  });
+
+  it('unwraps the envelope on delivery', async () => {
+    const { openPhi, sealPhi } = await import('../src/envelope.js');
+    expect(openPhi(sealPhi('{"x":1}').toString())).toBe('{"x":1}');
+    expect(openPhi('legacy plain text')).toBe('legacy plain text');
+  });
+
+  it("shows admins only their own patients' events", async () => {
+    const { eventVisible } = await import('../src/app.js');
+    const ev = (payload: object) => ({ eventName: 'EmergencyAccess', txId: 't', blockNumber: '1', payload });
+    const mine = new Set(['P-1001']);
+    expect(eventVisible(ev({ patientId: 'P-1001', providerOrg: 'Org2MSP', reason: 'x' }), 'admin', 'A-1001', 'Org1MSP', mine)).toBe(true);
+    expect(eventVisible(ev({ patientId: 'P-9', providerOrg: 'Org1MSP', actorOrg: 'Org1MSP', reason: 'x' }), 'admin', 'A-1001', 'Org1MSP', mine)).toBe(false);
+    expect(eventVisible(ev({ patientId: 'P-1001', actor: 'D-2001' }), 'doctor', 'D-2001', 'Org1MSP', mine)).toBe(true);
+    expect(eventVisible(ev({ patientId: 'P-1002', actor: 'D-3001' }), 'doctor', 'D-2001', 'Org1MSP', mine)).toBe(false);
+  });
+});

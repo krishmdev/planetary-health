@@ -1,6 +1,7 @@
 import type { Logger } from 'pino';
 import { type DeliveryStore, ReplayError } from './deliveries.js';
 import { toHttpError } from './fabric/errors.js';
+import { openPhi } from './envelope.js';
 import type { Ledger, TxReceipt } from './fabric/ledger.js';
 
 export interface AccessGrant {
@@ -30,6 +31,8 @@ export interface Freshness {
   grantBlock: string | null;
   ordererNewest: string;
   waitedForBlock: string;
+  boundaryMs: number; // querying the orderers
+  peerWaitMs: number; // waiting for the read peer to commit through the boundary
   waitMs: number;
   enforced: boolean;
 }
@@ -73,6 +76,7 @@ export class PhiService {
     if (this.store.get(accessId)) throw new ReplayError(accessId);
     const freshness = await this.waitFresh(user, accessId);
     const record = await this.ledger.evaluate<PhiResponse>(user, 'ReadRecordPHI', [accessId], { readPeer: true });
+    record.phi = openPhi(record.phi);
     this.store.consume({
       accessId,
       sub: user,
@@ -93,16 +97,25 @@ export class PhiService {
   private async waitFresh(user: string, accessId: string): Promise<Freshness> {
     const t0 = performance.now();
     const newest = await this.ledger.ordererBoundary(user);
+    const t1 = performance.now();
     const bg = this.grantBlocks.get(accessId) ?? null;
     const target = bg !== null && bg > newest ? bg : newest;
     if (this.opts.freshness) {
-      await this.ledger.waitForPeerBlock(user, target, this.opts.freshnessTimeoutMs, { readPeer: true });
+      try {
+        await this.ledger.waitForPeerBlock(user, target, this.opts.freshnessTimeoutMs, { readPeer: true });
+      } catch (err) {
+        this.log.warn({ accessId, target: target.toString(), boundaryMs: Math.round(t1 - t0), peerWaitMs: Math.round(performance.now() - t1) }, 'read peer not fresh');
+        throw err;
+      }
     }
+    const t2 = performance.now();
     return {
       grantBlock: bg === null ? null : bg.toString(),
       ordererNewest: newest.toString(),
       waitedForBlock: target.toString(),
-      waitMs: Math.round(performance.now() - t0),
+      boundaryMs: Math.round(t1 - t0),
+      peerWaitMs: Math.round(t2 - t1),
+      waitMs: Math.round(t2 - t0),
       enforced: this.opts.freshness,
     };
   }

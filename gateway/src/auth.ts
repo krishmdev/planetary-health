@@ -7,6 +7,7 @@ export interface Claims {
   role: Role;
   ehrId: string;
   org: string;
+  exp: number;
 }
 
 export interface JwtSettings {
@@ -31,7 +32,7 @@ export class Tokens {
     this.key = new TextEncoder().encode(settings.secret);
   }
 
-  async issue(c: Claims, now = Date.now()): Promise<{ token: string; expiresAt: string }> {
+  async issue(c: Omit<Claims, 'exp'>, now = Date.now()): Promise<{ token: string; expiresAt: string }> {
     const iat = Math.floor(now / 1000);
     const exp = iat + this.settings.ttlSeconds;
     const token = await new SignJWT({ role: c.role, ehrId: c.ehrId, org: c.org })
@@ -54,11 +55,11 @@ export class Tokens {
       audience: this.settings.audience,
       requiredClaims: ['sub', 'exp', 'iat'],
     });
-    const { sub, role, ehrId, org } = payload as Record<string, unknown>;
-    if (typeof sub !== 'string' || typeof role !== 'string' || typeof ehrId !== 'string' || typeof org !== 'string') {
+    const { sub, role, ehrId, org, exp } = payload as Record<string, unknown>;
+    if (typeof sub !== 'string' || typeof role !== 'string' || typeof ehrId !== 'string' || typeof org !== 'string' || typeof exp !== 'number') {
       throw new Error('malformed claims');
     }
-    return { sub, role: role as Role, ehrId, org };
+    return { sub, role: role as Role, ehrId, org, exp };
   }
 }
 

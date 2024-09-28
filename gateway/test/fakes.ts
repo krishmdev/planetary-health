@@ -107,6 +107,9 @@ export async function harness(opts: { freshness?: boolean; timeoutMs?: number } 
     put: (id: { label: string }) => {
       identities.add(id.label);
     },
+    remove: (l: string) => {
+      identities.delete(l);
+    },
   };
   const ledger = new ScriptedLedger();
   const deliveries = new DeliveryStore(':memory:');

@@ -6,6 +6,7 @@ import { type DeliveryStore, ReplayError } from './deliveries.js';
 import type { FabricCA } from './fabric/ca.js';
 import { toHttpError } from './fabric/errors.js';
 import type { ChaincodeEventMessage, Ledger } from './fabric/ledger.js';
+import { sealPhi } from './envelope.js';
 import { type Fetcher, networkStatus } from './network.js';
 import type { PhiService } from './phi.js';
 import { hashPassword, publicUser, type UserStore } from './users.js';
@@ -20,7 +21,7 @@ export interface AppDeps {
   orderers: { name: string; ops: string }[];
   peers: { name: string; url: string }[];
   ledger: Ledger;
-  wallet: Pick<Wallet, 'has' | 'get' | 'put'>;
+  wallet: Pick<Wallet, 'has' | 'get' | 'put' | 'remove'>;
   users: UserStore;
   tokens: Tokens;
   phi: PhiService;
@@ -62,6 +63,9 @@ const Id = z.string().regex(/^[A-Za-z0-9_-]{3,40}$/);
 export function createApp(d: AppDeps): express.Express {
   const app = express();
   app.disable('x-powered-by');
+  // Requests arrive through the activator (and nginx for the UI); take the client address from
+  // X-Forwarded-For only when the hop is on loopback or a private network.
+  app.set('trust proxy', 'loopback, uniquelocal');
   app.use(express.json({ limit: '128kb' }));
 
   const wrap =
@@ -148,7 +152,7 @@ export function createApp(d: AppDeps): express.Express {
       const b = body(z.object({ type: RecordTypes, phi: z.union([z.string().min(1), z.record(z.string(), z.unknown())]) }), req);
       const phi = typeof b.phi === 'string' ? b.phi : JSON.stringify(b.phi);
       const { result, receipt } = await d.ledger.submit(sub(req), 'CreateRecord', [String(req.params.pid), b.type], {
-        phi: Buffer.from(phi, 'utf8'),
+        phi: sealPhi(phi),
       });
       return { record: result, receipt };
     }),
@@ -280,11 +284,20 @@ export function createApp(d: AppDeps): express.Express {
           { name: 'ehr.id', value: b.ehrId, ecert: true },
         ],
       });
-      const creds = await d.ca.enroll(b.username, secret);
-      d.wallet.put({ label: b.username, mspId: d.mspId, ...creds });
       const fn = { patient: 'RegisterPatient', doctor: 'RegisterProvider', admin: 'RegisterAdmin' }[b.role];
       const args = b.role === 'doctor' ? [b.ehrId, b.username, b.specialty ?? ''] : [b.ehrId, b.username];
-      const { result, receipt } = await d.ledger.submit(sub(req), fn, args);
+      let result: unknown;
+      let receipt: unknown;
+      try {
+        const creds = await d.ca.enroll(b.username, secret);
+        d.wallet.put({ label: b.username, mspId: d.mspId, ...creds });
+        ({ result, receipt } = await d.ledger.submit(sub(req), fn, args));
+      } catch (err) {
+        // Undo the CA registration and wallet entry so a retry starts clean.
+        d.wallet.remove(b.username);
+        await d.ca.revoke(registrar, b.username).catch((e: Error) => d.log.warn({ user: b.username, err: e.message }, 'could not revoke orphaned CA identity'));
+        throw err;
+      }
       d.users.upsert({
         sub: b.username,
         ehrId: b.ehrId,
@@ -330,8 +343,12 @@ export function createApp(d: AppDeps): express.Express {
       return;
     }
     const ping = setInterval(() => res.write(': ping\n\n'), 15000);
+    // The stream ends when the token does; the client has to log in again to reconnect, which
+    // also re-checks the account.
+    const expiry = setTimeout(() => res.end(), Math.max(0, claims.exp * 1000 - Date.now()));
     req.on('close', () => {
       clearInterval(ping);
+      clearTimeout(expiry);
       close?.();
     });
   });
@@ -351,10 +368,12 @@ export function createApp(d: AppDeps): express.Express {
 
 export function eventVisible(e: ChaincodeEventMessage, role: string, ehrId: string, mspId: string, orgPatients: Set<string>): boolean {
   const p = (e.payload ?? {}) as Record<string, unknown>;
-  const ids = ['patientId', 'providerId', 'actor', 'grantee', 'createdBy', 'id'].map((k) => p[k]).filter((v) => typeof v === 'string');
   if (role === 'admin') {
-    const orgs = ['org', 'patientOrg', 'actorOrg', 'providerOrg'].map((k) => p[k]);
-    return orgs.includes(mspId) || (typeof p.patientId === 'string' && orgPatients.has(p.patientId));
+    // Only events about this hospital's own patients or members; another org's break-glass
+    // reasons and access purposes stay with that org.
+    if (typeof p.patientId === 'string') return orgPatients.has(p.patientId);
+    return p.org === mspId;
   }
+  const ids = ['patientId', 'providerId', 'actor', 'grantee', 'createdBy', 'id'].map((k) => p[k]).filter((v) => typeof v === 'string');
   return ids.includes(ehrId);
 }

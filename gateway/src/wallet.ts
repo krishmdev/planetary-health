@@ -103,6 +103,11 @@ export class Wallet {
     return id;
   }
 
+  remove(label: string): void {
+    this.cache.delete(label);
+    if (this.has(label)) fs.rmSync(this.file(label));
+  }
+
   list(): string[] {
     return fs
       .readdirSync(this.dir)
