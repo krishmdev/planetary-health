@@ -5,7 +5,11 @@ export const ACTIVATOR = process.env.ACTIVATOR_ADMIN ?? 'http://localhost:8090';
 export const ORG1_API = process.env.ORG1_API ?? 'http://localhost:8080';
 
 export async function admin(path: string, method = 'POST'): Promise<unknown> {
-  const r = await fetch(`${ACTIVATOR}${path}`, { method, signal: AbortSignal.timeout(180_000) });
+  const r = await fetch(`${ACTIVATOR}${path}`, {
+    method,
+    headers: { 'X-Activator-Token': process.env.ACTIVATOR_ADMIN_TOKEN ?? '' },
+    signal: AbortSignal.timeout(180_000),
+  });
   const body = await r.json().catch(() => null);
   if (!r.ok) throw new Error(`activator ${path}: ${r.status} ${JSON.stringify(body)}`);
   return body;

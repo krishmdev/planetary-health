@@ -4,6 +4,7 @@
 //
 //   pnpm -C experiments throughput [--duration 45] [--levels 1,8,32,64]
 import { randomBytes } from 'node:crypto';
+import { sealPhi } from '../../gateway/src/envelope.js';
 import { connectAs } from './lib/fabric.js';
 import { sleep, writeResult } from './lib/manifest.js';
 import { summary } from './lib/stats.js';
@@ -32,7 +33,7 @@ async function level(channel: string, concurrency: number) {
       const phi = JSON.stringify({ note: randomBytes(1000).toString('hex').slice(0, 2048 - 20) });
       const t0 = performance.now();
       try {
-        const tx = await conn.contract.newProposal('CreateRecord', { arguments: ['P-1001', 'lab'], transientData: { phi } }).endorse();
+        const tx = await conn.contract.newProposal('CreateRecord', { arguments: ['P-1001', 'lab'], transientData: { phi: sealPhi(phi) } }).endorse();
         const t1 = performance.now();
         const sub = await tx.submit();
         const status = await sub.getStatus();

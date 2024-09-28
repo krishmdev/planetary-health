@@ -28,8 +28,12 @@ services:
       DATA_DIR: /data
       WALLET_KEY: ${ORG1_WALLET_KEY:?set in .env}
       JWT_SECRET: ${ORG1_JWT_SECRET:?set in .env}
+    # Only public CA certificates: this org's TLS CA, the orderers' TLS CA and this org's
+    # Fabric CA. No other org's (or any node's) keys are visible in the container.
     volumes:
-      - ./.fabric/fabric-samples/test-network/organizations:/fabric/organizations:ro
+      - ./.fabric/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/tlsca:/fabric/organizations/peerOrganizations/org1.example.com/tlsca:ro
+      - ./.fabric/fabric-samples/test-network/organizations/ordererOrganizations/example.com/tlsca:/fabric/organizations/ordererOrganizations/example.com/tlsca:ro
+      - ./.fabric/fabric-samples/test-network/organizations/fabric-ca/org1/ca-cert.pem:/fabric/organizations/fabric-ca/org1/ca-cert.pem:ro
       - ./.wallet/org1:/wallet
       - ./.data/org1:/data
 
@@ -49,8 +53,12 @@ services:
       DATA_DIR: /data
       WALLET_KEY: ${ORG2_WALLET_KEY:?set in .env}
       JWT_SECRET: ${ORG2_JWT_SECRET:?set in .env}
+    # Only public CA certificates: this org's TLS CA, the orderers' TLS CA and this org's
+    # Fabric CA. No other org's (or any node's) keys are visible in the container.
     volumes:
-      - ./.fabric/fabric-samples/test-network/organizations:/fabric/organizations:ro
+      - ./.fabric/fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/tlsca:/fabric/organizations/peerOrganizations/org2.example.com/tlsca:ro
+      - ./.fabric/fabric-samples/test-network/organizations/ordererOrganizations/example.com/tlsca:/fabric/organizations/ordererOrganizations/example.com/tlsca:ro
+      - ./.fabric/fabric-samples/test-network/organizations/fabric-ca/org2/ca-cert.pem:/fabric/organizations/fabric-ca/org2/ca-cert.pem:ro
       - ./.wallet/org2:/wallet
       - ./.data/org2:/data
 
@@ -67,12 +75,14 @@ services:
       ACTIVATOR_PEER_IDLE_TIMEOUT: ${ACTIVATOR_PEER_IDLE_TIMEOUT:-300s}
       ORG1_JWT_SECRET: ${ORG1_JWT_SECRET:?set in .env}
       ORG2_JWT_SECRET: ${ORG2_JWT_SECRET:?set in .env}
+      ACTIVATOR_ADMIN_TOKEN: ${ACTIVATOR_ADMIN_TOKEN:?set in .env}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    # Loopback only: the admin port can stop containers.
     ports:
-      - "8080:8080"
-      - "8081:8081"
-      - "8090:8090"
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8081:8081"
+      - "127.0.0.1:8090:8090"
     networks: [fabric]
 
   ui:
@@ -80,7 +90,7 @@ services:
     build: { context: ., dockerfile: ui/Dockerfile }
     container_name: planetary-ui
     ports:
-      - "8088:80"
+      - "127.0.0.1:8088:80"
     networks: [fabric]
     depends_on: [activator]
 

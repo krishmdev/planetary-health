@@ -20,8 +20,8 @@ jobs:
         working-directory: chaincode/ehr
         run: |
           test -z "$(gofmt -l .)"
-          go vet ./...
-          go test ./... -cover
+          go vet -mod=mod ./...
+          go test -mod=mod ./... -cover
       - name: activator
         working-directory: activator
         run: |
