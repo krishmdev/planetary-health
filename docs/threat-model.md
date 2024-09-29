@@ -26,6 +26,8 @@ a production deployment.
 - The chaincode takes the caller's identity from `cid` only. No transaction takes an identity
   or role argument. The registry entry for that `ehr.id` must exist for the certificate's role,
   match its MSP, be bound to the same enrollment ID (certificate CN), and be active.
+- Each gateway container mounts only public CA certificates (its org's TLS CA, the orderers'
+  TLS CA and its org's Fabric CA) plus its own wallet, never the test network's key material.
 - Custodial keys are a demo simplification. A compromised gateway host can sign as any of that
   org's users. Production would use an HSM or client-side signing.
 - JWTs are HS256 with per-org secrets, issuers and audiences, and expire after 15 minutes. The
@@ -37,10 +39,14 @@ a production deployment.
 - The endorsement policy is MAJORITY of Org1 and Org2, so both hospitals' peers run the access
   policy on every write. A compromised gateway at one hospital cannot write a consent, access
   grant or record that the other hospital's policy check rejects.
-- Fabric does not validate proposal timestamps. Each endorser therefore rejects consent
-  grant/revoke, `RequestAccess` and break-glass writes whose timestamp is more than 120 s from
-  its own clock. Without this, one org could backdate a grant and the other org would still
-  endorse it.
+- Fabric does not validate proposal timestamps. Each endorser therefore rejects `CreateRecord`,
+  consent grant/revoke, `RequestAccess` and break-glass request/review whose timestamp is more
+  than 120 s from its own clock. Without this, one org could backdate a write (for example an
+  append under an expired consent) and the other org would still endorse it. `ReadRecordPHI`
+  applies the same check, though an evaluate's timestamp is chosen by the org's own gateway.
+- Record digests on the public ledger are taken over `{salt, data}` with a 32-byte random salt
+  that exists only in the private collection. Otherwise the digest of a short record could be
+  confirmed by guessing.
 
 ## PHI reads: grants on the ledger, deliveries at the gateway
 
@@ -60,6 +66,12 @@ read cannot atomically consume an on-ledger authorization and return PHI. The de
    returning PHI, so a second use returns 409.
 5. It submits a `RecordDelivery` receipt, retried from an outbox. `AuditReconcile` flags local
    deliveries with no receipt on the ledger.
+
+Single use is per gateway store. Each org runs one gateway with one SQLite file, and a grant can
+be delivered once through it. Two gateway processes of the same org with separate files could
+each deliver it once until the first receipt lands on the ledger, after which `ReadRecordPHI`
+refuses it. The e2e's replica and control gateways (ports 8082/8083) are test fixtures with
+their own files, not a deployment pattern.
 
 What the ledger guarantees: an endorsed, immutable record of every grant (who, what, why, when)
 and a best-effort receipt for each delivery. What it does not guarantee: delivery counts. Those
@@ -92,12 +104,23 @@ gateway sets it, which is inside the trust boundary above.
   boundary is always honored. One ordered after the boundary but before the bytes leave the
   gateway may lose the race. The exposure is at most one delivery per grant, inside the grant's
   5-minute window. Patients can also cancel outstanding grants (`RevokeAccessGrants`).
-- A lagging peer never serves stale data. If the read peer does not catch up within 5 s, the
-  gateway returns 503 `STALE_PEER` with Retry-After. The e2e pauses the `peer1.org1` read
-  replica to test this. A `FRESHNESS=off` gateway is the negative control and must serve the
-  revoked read.
+- A lagging peer never serves data older than the boundary. If the read peer does not catch up
+  within the freshness timeout (5 s by default), the gateway returns 503 `STALE_PEER` with
+  Retry-After.
+  - The e2e tests this by pausing the `peer1.org1` read replica and committing 60 filler
+    transactions and then a revocation.
+  - After unpausing, the replica, a BFT deliver client, must re-establish its block and header
+    sources and commit every filler block. In one run that took longer than 5 s, so the e2e's
+    replica and control gateways use 15 s. The measured catch-up is stored with each run
+    (`replicaCatchUpMs`, `heightAtRead`).
+  - A `FRESHNESS=off` gateway is the negative control. It must serve the revoked read while
+    the replica is still behind, which shows the positive test is not vacuous.
 - If the read peer doesn't hold the private data yet (dissemination or reconciliation pending),
   the chaincode returns `PHI_UNAVAILABLE`, which maps to 503 rather than 404.
+
+Event streams (SSE) show admins only events about their own org's patients. A stream closes when
+its JWT expires, so a deactivated user loses it at the latest after 15 minutes. The stream's
+token is in the query string, and nginx does not log that path.
 
 ## Revocation
 
@@ -111,8 +134,9 @@ gateway sets it, which is inside the trust boundary above.
 
 ## Serverless tier and denial of service
 
-The IEEE CCCI 2024 paper this repo tests frames cold-start amplification as a risk: attackers
-send cheap requests that each force an expensive wake-up. Mitigations here:
+The IEEE CCCI 2024 paper this repo tests discusses DDoS risk for serverless blockchain EHRs.
+Here the concrete version is cold-start amplification: cheap requests that each force an
+expensive wake-up. Mitigations:
 
 - The activator verifies JWT signature, issuer, audience and expiry before waking. An
   unauthenticated request gets 401 and wakes nothing.
@@ -120,6 +144,9 @@ send cheap requests that each force an expensive wake-up. Mitigations here:
   API container, never the peers.
 - There is a global cap on concurrent wakes and a bounded wait queue (503 beyond it). `/healthz`
   is answered by the activator itself.
+- The activator's admin API (scale-down, mode) requires an `X-Activator-Token`. It and the API
+  ports are published on 127.0.0.1 only. The login rate limit keys on X-Forwarded-For only when
+  the request comes from a configured trusted proxy (nginx).
 - A wake that doesn't reach readiness within 90 s returns 503 with Retry-After. It never
   forwards a request to a half-ready endorsement path.
 

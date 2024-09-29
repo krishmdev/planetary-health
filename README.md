@@ -8,7 +8,7 @@ break-glass for emergencies, and metadata-only access for administrators. Both h
 re-check that policy on every write.
 
 A Go "activator" in front of each hospital's API scales it, and optionally its peers, to zero
-when idle. This tests the claim of Rana, Lu and Singh (IEEE CCCI 2024, see [Related work](#related-work))
+when idle. This tests the thesis of Rana, Lu and Singh (IEEE CCCI 2024, see [Related work](#related-work))
 that serverless-style deployment cuts the cost of a blockchain EHR. Everything runs locally on
 Docker; nothing is deployed anywhere.
 
@@ -63,7 +63,7 @@ The on-chain registry binds each ID to one enrollment and carries the active fla
 ## Quickstart
 
 Requirements: Docker Desktop (arm64 or amd64; about 3 GB of RAM for the network and app tier),
-Go 1.24, Node 22.12+, pnpm 10, `jq`.
+Go 1.24, Node 22.13+, pnpm 10, `jq`.
 
 ```bash
 make setup          # pnpm install, go mod download, copy .env.example to .env
@@ -105,7 +105,8 @@ be one transaction. It is two, plus gateway-side bookkeeping:
 2. **Freshness boundary.** The gateway asks the ordering service itself for its newest block: a
    signed Deliver `SeekNewest` to all four orderers, taking the second-largest of the first
    three answers. It then waits for the read peer to commit through that block, or returns 503
-   after 5 s. It never serves possibly-stale data.
+   after 5 s (15 s for the replica gateways in the e2e, see below). It never serves data older
+   than that boundary.
 3. **Delivery.** `ReadRecordPHI` goes straight to that peer's Endorser. It re-checks the grant
    and the current consent, and hashes the private data against the on-ledger digest. The
    gateway records the `accessId` as consumed (unique key) before returning anything, so replay
@@ -170,10 +171,15 @@ Not run yet.
 - `make e2e`: the same contract items against the live network, plus things only a network can
   show. These include a grant ordered after a revocation (409 then 403), a paused read replica
   (403 after catch-up, 503 when kept paused), the `FRESHNESS=off` negative control, and CRL
-  revocation.
+  revocation. The replica test pauses `peer1.org1`, commits 60 filler transactions and then the
+  revocation, so the replica has real work to do after unpausing. Its catch-up (measured and
+  stored as `replicaCatchUpMs` in `experiments/results/e2e.json`) has taken longer than 5 s in
+  some runs, so the replica and control gateways use a 15 s freshness timeout. The org gateways
+  keep the 5 s default.
 
-CI runs the unit tests. It doesn't start the Fabric network, so the e2e and experiments must run
-locally. The e2e result is currently untracked, and E1–E4 have no result files yet.
+CI runs the unit tests. It doesn't start the Fabric network, so the e2e and experiments are run
+locally (`scripts/lease-run.sh` brings the network up, runs them, and tears it down) and their
+result files are committed.
 
 ## HIPAA mapping
 
