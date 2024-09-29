@@ -72,13 +72,15 @@ async function level(channel: string, concurrency: number) {
 
 async function main() {
   const rows = [];
-  for (const c of CHANNELS) {
-    // Warm the chaincode container and the connection first.
-    await level(c.channel, 1).catch(() => undefined);
-    for (const n of LEVELS) {
+  for (const c of CHANNELS) await level(c.channel, 1).catch(() => undefined); // warm both chaincode containers
+  // Interleave the channels and alternate which goes first, so neither one always runs on the
+  // bigger ledger or the warmer host.
+  for (const [i, n] of LEVELS.entries()) {
+    const order = i % 2 === 0 ? CHANNELS : [...CHANNELS].reverse();
+    for (const c of order) {
       const r = await level(c.channel, n);
       console.log(`${c.consensus} c=${n}: ${r.tps} TPS, commit p50 ${r.submitToCommitMs.p50} ms, p95 ${r.submitToCommitMs.p95} ms`);
-      rows.push({ consensus: c.consensus, ...r });
+      rows.push({ consensus: c.consensus, order: order.map((o) => o.consensus).join(' then '), ...r });
       await sleep(3000);
     }
   }
@@ -89,8 +91,9 @@ async function main() {
       config: {
         durationS: DURATION / 1000,
         levels: LEVELS,
+        ordering: 'channels interleaved per level, alternating which runs first',
         orderers: 4,
-        bft: 'SmartBFT, RequestBatchMaxInterval 50ms, MaxMessageCount 10',
+        bft: 'SmartBFT, RequestBatchMaxInterval 50ms; RequestBatchMaxCount comes from BatchSize.MaxMessageCount = 10 (orderer/consensus/smartbft/util.go:460 in v3.1.5)',
         raft: 'etcdraft on the same 4 orderer processes, BatchTimeout 50ms, MaxMessageCount 10',
       },
       rows,
