@@ -1,0 +1,83 @@
+{
+  "experiment": "bft-demo",
+  "summary": {
+    "leaderBefore": "orderer.example.com",
+    "leaderAfter": "orderer4.example.com",
+    "leaderStopToFirstCommitS": 81.5,
+    "twoDownQuorumError": true,
+    "twoDownError": "14 UNAVAILABLE: insufficient number of orderers could successfully process transaction to satisfy quorum requirement | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup orderer.example.com on 127.0.0.11:53: no such host\" | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup ord",
+    "restartToFirstCommitS": 44.2
+  },
+  "steps": [
+    {
+      "step": "baseline, 4 of 4 orderers up",
+      "outcome": "committed",
+      "ms": 111,
+      "block": "76"
+    },
+    {
+      "step": "follower orderer2.example.com stopped, 3 of 4 up",
+      "outcome": "committed",
+      "ms": 62,
+      "block": "77"
+    },
+    {
+      "step": "follower restarted, 4 of 4 up",
+      "outcome": "committed",
+      "ms": 92,
+      "block": "78"
+    },
+    {
+      "step": "leader orderer.example.com stopped, attempt 1",
+      "outcome": "committed",
+      "ms": 81514,
+      "block": "79"
+    },
+    {
+      "step": "second orderer orderer2.example.com stopped, 2 of 4 up",
+      "outcome": "failed",
+      "ms": 53,
+      "error": "14 UNAVAILABLE: insufficient number of orderers could successfully process transaction to satisfy quorum requirement | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup orderer.example.com on 127.0.0.11:53: no such host\" | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup ord"
+    },
+    {
+      "step": "all restarted, attempt 1",
+      "outcome": "failed",
+      "ms": 21,
+      "error": "14 UNAVAILABLE: insufficient number of orderers could successfully process transaction to satisfy quorum requirement | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup orderer.example.com on 127.0.0.11:53: no such host\" | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup ord"
+    },
+    {
+      "step": "all restarted, attempt 2",
+      "outcome": "committed",
+      "ms": 42140,
+      "block": "80"
+    }
+  ],
+  "run_manifest": {
+    "recorded_at": "2024-09-24T15:29:36-0400",
+    "host": {
+      "chip": "Apple M1 Pro",
+      "ram_gb": 16,
+      "os": "Darwin 26.5.1",
+      "python": "3.14.6",
+      "power": "Now drawing from 'AC Power'"
+    },
+    "exclusive_compute": {
+      "held": true,
+      "holder": "planetary-fabric"
+    },
+    "load": {
+      "loadavg": [
+        "5.31",
+        "8.57",
+        "9.11"
+      ],
+      "cpu_usage": "CPU usage: 22.62% user, 14.42% sys, 62.95% idle",
+      "docker_containers_running": 17,
+      "swap": "total = 8192.00M  used = 6781.19M  free = 1410.81M  (encrypted)"
+    },
+    "extra": {
+      "experiment": "bft-demo",
+      "device": "docker-desktop-arm64"
+    }
+  }
+}

@@ -1,0 +1,344 @@
+{
+  "experiment": "throughput",
+  "description": "Closed-loop CreateRecord (2 KiB transient PHI) through one Org1 gateway peer; MAJORITY endorsement (Org1+Org2).",
+  "config": {
+    "durationS": 45,
+    "levels": [
+      1,
+      8,
+      32,
+      64
+    ],
+    "ordering": "channels interleaved per level, alternating which runs first",
+    "orderers": 4,
+    "bft": "SmartBFT, RequestBatchMaxInterval 50ms; RequestBatchMaxCount comes from BatchSize.MaxMessageCount = 10 (orderer/consensus/smartbft/util.go:460 in v3.1.5)",
+    "raft": "etcdraft on the same 4 orderer processes, BatchTimeout 50ms, MaxMessageCount 10"
+  },
+  "rows": [
+    {
+      "consensus": "SmartBFT",
+      "order": "SmartBFT then etcdraft",
+      "channel": "ehrchannel",
+      "concurrency": 1,
+      "durationS": 45,
+      "committed": 791,
+      "tps": 17.6,
+      "endorseMs": {
+        "n": 791,
+        "p50": 13.5,
+        "p95": 16.3,
+        "p99": 21.8,
+        "min": 10.6,
+        "max": 26.1,
+        "mean": 13.8
+      },
+      "submitToCommitMs": {
+        "n": 791,
+        "p50": 43,
+        "p95": 47.9,
+        "p99": 52.1,
+        "min": 20.7,
+        "max": 74.2,
+        "mean": 43.1
+      },
+      "totalMs": {
+        "n": 791,
+        "p50": 56.6,
+        "p95": 61.3,
+        "p99": 65.9,
+        "min": 34.6,
+        "max": 87,
+        "mean": 56.9
+      },
+      "errors": {}
+    },
+    {
+      "consensus": "etcdraft",
+      "order": "SmartBFT then etcdraft",
+      "channel": "ehrraft",
+      "concurrency": 1,
+      "durationS": 45.1,
+      "committed": 546,
+      "tps": 12.1,
+      "endorseMs": {
+        "n": 546,
+        "p50": 13.9,
+        "p95": 16.7,
+        "p99": 19.2,
+        "min": 10.3,
+        "max": 25.9,
+        "mean": 14
+      },
+      "submitToCommitMs": {
+        "n": 546,
+        "p50": 68.1,
+        "p95": 71.3,
+        "p99": 74.2,
+        "min": 62.8,
+        "max": 176.8,
+        "mean": 68.4
+      },
+      "totalMs": {
+        "n": 546,
+        "p50": 82.1,
+        "p95": 86.1,
+        "p99": 89.9,
+        "min": 75.7,
+        "max": 191.4,
+        "mean": 82.4
+      },
+      "errors": {}
+    },
+    {
+      "consensus": "etcdraft",
+      "order": "etcdraft then SmartBFT",
+      "channel": "ehrraft",
+      "concurrency": 8,
+      "durationS": 45,
+      "committed": 3832,
+      "tps": 85.1,
+      "endorseMs": {
+        "n": 3832,
+        "p50": 21.4,
+        "p95": 30.5,
+        "p99": 35.9,
+        "min": 12.3,
+        "max": 51.2,
+        "mean": 22.1
+      },
+      "submitToCommitMs": {
+        "n": 3832,
+        "p50": 71.7,
+        "p95": 81.5,
+        "p99": 89.1,
+        "min": 45.1,
+        "max": 211.3,
+        "mean": 71.9
+      },
+      "totalMs": {
+        "n": 3832,
+        "p50": 93.2,
+        "p95": 105.6,
+        "p99": 115.4,
+        "min": 72.4,
+        "max": 228.5,
+        "mean": 93.9
+      },
+      "errors": {}
+    },
+    {
+      "consensus": "SmartBFT",
+      "order": "etcdraft then SmartBFT",
+      "channel": "ehrchannel",
+      "concurrency": 8,
+      "durationS": 45.1,
+      "committed": 4553,
+      "tps": 101,
+      "endorseMs": {
+        "n": 4553,
+        "p50": 24.7,
+        "p95": 37.1,
+        "p99": 58.1,
+        "min": 10.4,
+        "max": 162.3,
+        "mean": 26
+      },
+      "submitToCommitMs": {
+        "n": 4553,
+        "p50": 40.9,
+        "p95": 95.5,
+        "p99": 110.8,
+        "min": 20.4,
+        "max": 183.6,
+        "mean": 53.3
+      },
+      "totalMs": {
+        "n": 4553,
+        "p50": 63,
+        "p95": 127,
+        "p99": 151,
+        "min": 42.7,
+        "max": 255.4,
+        "mean": 79.2
+      },
+      "errors": {}
+    },
+    {
+      "consensus": "SmartBFT",
+      "order": "SmartBFT then etcdraft",
+      "channel": "ehrchannel",
+      "concurrency": 32,
+      "durationS": 45.2,
+      "committed": 7251,
+      "tps": 160.3,
+      "endorseMs": {
+        "n": 7251,
+        "p50": 79.1,
+        "p95": 158.9,
+        "p99": 216.7,
+        "min": 28.7,
+        "max": 287.6,
+        "mean": 87.8
+      },
+      "submitToCommitMs": {
+        "n": 7251,
+        "p50": 102.7,
+        "p95": 197.6,
+        "p99": 261.2,
+        "min": 40.6,
+        "max": 386.9,
+        "mean": 111.4
+      },
+      "totalMs": {
+        "n": 7251,
+        "p50": 184.8,
+        "p95": 332.1,
+        "p99": 409.9,
+        "min": 74.4,
+        "max": 674.1,
+        "mean": 199.2
+      },
+      "errors": {}
+    },
+    {
+      "consensus": "etcdraft",
+      "order": "SmartBFT then etcdraft",
+      "channel": "ehrraft",
+      "concurrency": 32,
+      "durationS": 45.1,
+      "committed": 10806,
+      "tps": 239.7,
+      "endorseMs": {
+        "n": 10806,
+        "p50": 55.9,
+        "p95": 122.3,
+        "p99": 171.2,
+        "min": 23.6,
+        "max": 381.4,
+        "mean": 64
+      },
+      "submitToCommitMs": {
+        "n": 10806,
+        "p50": 60.3,
+        "p95": 122.9,
+        "p99": 196.1,
+        "min": 23.9,
+        "max": 281.9,
+        "mean": 69.3
+      },
+      "totalMs": {
+        "n": 10806,
+        "p50": 120,
+        "p95": 236.7,
+        "p99": 327.6,
+        "min": 61.1,
+        "max": 566.8,
+        "mean": 133.4
+      },
+      "errors": {}
+    },
+    {
+      "consensus": "etcdraft",
+      "order": "etcdraft then SmartBFT",
+      "channel": "ehrraft",
+      "concurrency": 64,
+      "durationS": 45.1,
+      "committed": 11429,
+      "tps": 253.2,
+      "endorseMs": {
+        "n": 11429,
+        "p50": 118.9,
+        "p95": 218.1,
+        "p99": 314.2,
+        "min": 38.1,
+        "max": 830.4,
+        "mean": 130.2
+      },
+      "submitToCommitMs": {
+        "n": 11429,
+        "p50": 107.6,
+        "p95": 231.9,
+        "p99": 304.3,
+        "min": 29.1,
+        "max": 814.2,
+        "mean": 122.1
+      },
+      "totalMs": {
+        "n": 11429,
+        "p50": 230.5,
+        "p95": 426.4,
+        "p99": 585.7,
+        "min": 108.1,
+        "max": 948.5,
+        "mean": 252.4
+      },
+      "errors": {}
+    },
+    {
+      "consensus": "SmartBFT",
+      "order": "etcdraft then SmartBFT",
+      "channel": "ehrchannel",
+      "concurrency": 64,
+      "durationS": 45.2,
+      "committed": 6597,
+      "tps": 146,
+      "endorseMs": {
+        "n": 6597,
+        "p50": 173.8,
+        "p95": 345.2,
+        "p99": 430,
+        "min": 52.2,
+        "max": 579.1,
+        "mean": 192.5
+      },
+      "submitToCommitMs": {
+        "n": 6597,
+        "p50": 203.3,
+        "p95": 538,
+        "p99": 665.8,
+        "min": 43.9,
+        "max": 790.4,
+        "mean": 244.6
+      },
+      "totalMs": {
+        "n": 6597,
+        "p50": 383.7,
+        "p95": 837.5,
+        "p99": 981.9,
+        "min": 155.2,
+        "max": 1240.4,
+        "mean": 437.1
+      },
+      "errors": {}
+    }
+  ],
+  "run_manifest": {
+    "recorded_at": "2024-09-24T15:37:33-0400",
+    "host": {
+      "chip": "Apple M1 Pro",
+      "ram_gb": 16,
+      "os": "Darwin 26.5.1",
+      "python": "3.14.6",
+      "power": "Now drawing from 'AC Power'"
+    },
+    "exclusive_compute": {
+      "held": true,
+      "holder": "planetary-fabric"
+    },
+    "load": {
+      "loadavg": [
+        "13.70",
+        "9.91",
+        "9.24"
+      ],
+      "cpu_usage": "CPU usage: 5.0% user, 11.42% sys, 83.57% idle",
+      "docker_containers_running": 17,
+      "swap": "total = 7168.00M  used = 5802.31M  free = 1365.69M  (encrypted)"
+    },
+    "extra": {
+      "experiment": "throughput",
+      "device": "docker-desktop-arm64",
+      "workload": "CreateRecord-2KiB"
+    }
+  }
+}
