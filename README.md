@@ -104,7 +104,9 @@ needs two transactions and gateway-side bookkeeping:
    validation (phantom/MVCC read conflict).
 2. **Freshness boundary.** The gateway asks the ordering service itself for its newest block: a
    signed Deliver `SeekNewest` to all four orderers, taking the second-largest of the first
-   three answers. It then waits for the read peer to commit through that block, or returns 503
+   three answers. (The original plan took the max of two answers. That lets a single lying
+   orderer inflate the boundary and stall every read, so this deliberately uses n−f answers and
+   the (f+1)-th largest; docs/threat-model.md has the trade-off.) It then waits for the read peer to commit through that block, or returns 503
    after 5 s (15 s for the replica gateways in the e2e, see below). It never serves data older
    than that boundary.
 3. **Delivery.** `ReadRecordPHI` goes straight to that peer's Endorser. It re-checks the grant
@@ -236,14 +238,17 @@ The runs show:
   show. These include a grant ordered after a revocation (409 then 403), a paused read replica
   (403 after catch-up, 503 when kept paused), the `FRESHNESS=off` negative control, and CRL
   revocation. The replica test pauses `peer1.org1`, commits 60 filler transactions and then the
-  revocation, so the replica has real work to do after unpausing. Its catch-up (measured and
-  stored as `replicaCatchUpMs` in `experiments/results/e2e.json`) has taken longer than 5 s in
-  some runs, so the replica and control gateways use a 15 s freshness timeout. The org gateways
-  keep the 5 s default.
+  revocation, so the replica has real work to do after unpausing. Its catch-up is measured and
+  stored as `replicaCatchUpMs` in `experiments/results/e2e.json`, tens of milliseconds in the
+  committed run. In earlier local runs whose logs weren't kept it took longer than 5 s, so the
+  replica and control gateways use a 15 s freshness timeout. The org gateways keep the 5 s
+  default.
 
-CI runs the unit tests. It doesn't start the Fabric network, so the e2e and experiments are run
-locally (`scripts/lease-run.sh` brings the network up, runs them, and tears it down) and their
-result files are committed.
+CI runs the Go tests, and runs the gateway, UI and harness unit tests a second time inside a
+`--network none` container. The Fabric stack itself has no egress-blocked mode: the network,
+the e2e and the experiments need Docker plus the images and binaries from `make bootstrap`, so
+they run locally (`scripts/lease-run.sh` brings the network up, runs them, and tears it down)
+and their result files are committed.
 
 ## HIPAA mapping
 
@@ -268,8 +273,13 @@ hospital's gateway. All four orderers are run by one organization on one host.
 - Once, a BFT channel that had been idle for about four hours stopped committing (height stuck;
   orderer cluster sends failing with EOF) and a restart of the orderers didn't fix it. A fresh
   network didn't reproduce it, and the cause was not found.
-- The replica catch-up time after a pause varied from tens of milliseconds to more than 5 s
-  between runs. That is why the e2e's replica gateways use a 15 s freshness timeout.
+- The replica catch-up time after a pause varied between runs: tens of milliseconds in the
+  committed run, more than 5 s in earlier runs that weren't kept. That is why the e2e's replica
+  gateways use a 15 s freshness timeout.
+- E1 and E4 ran on battery power with 8–11 GB of swap in use, and E2 with a load average near
+  14 (see the run-conditions table). Other agents' workloads shared the machine. Absolute
+  latencies and CPU numbers would be lower on an idle host; the comparisons within each run are
+  the point.
 - Mobile screenshots aren't committed: the last run showed a wrapping checkbox and a crowded top
   bar. The CSS is fixed but the phone layout wasn't re-shot on the live stack.
 
