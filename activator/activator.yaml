@@ -11,8 +11,9 @@ max_concurrent_wakes: 4
 queue_limit: 256
 login_burst: 5
 login_per_second: 0.5
-# nginx (the UI) sits on the Docker network; take the client address from its X-Forwarded-For.
-trusted_proxies: ["172.16.0.0/12", "127.0.0.1/32"]
+# Only the UI's nginx container is trusted to set X-Forwarded-For (resolved by name, since
+# Docker assigns its address).
+trusted_proxies: ["planetary-ui"]
 
 apis:
   - name: org1-api

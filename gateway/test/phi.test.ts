@@ -84,6 +84,8 @@ describe('PHI grant and delivery', () => {
     const r = await request(h.app).post(`/access/${g.body.grant.accessId}/deliver`).set(auth);
     expect(r.status).toBe(403);
     expect(r.body.error).toBe('ACCESS_DENIED');
+    expect(r.body.freshness.waitedForBlock).toBeDefined();
+    expect(JSON.stringify(r.body)).not.toContain('hba1c');
     expect(h.deliveries.get(g.body.grant.accessId)).toBeUndefined();
   });
 

@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/krishmdev/planetary-health/activator/internal/authgate"
 	"github.com/krishmdev/planetary-health/activator/internal/config"
@@ -19,13 +21,17 @@ import (
 )
 
 type Handler struct {
-	api     *config.API
-	mgr     *lifecycle.Manager
-	auth    *authgate.Verifier
-	login   *authgate.Bucket
-	met     *metrics.Metrics
-	rproxy  *httputil.ReverseProxy
-	proxies []*net.IPNet
+	api        *config.API
+	mgr        *lifecycle.Manager
+	auth       *authgate.Verifier
+	login      *authgate.Bucket
+	met        *metrics.Metrics
+	rproxy     *httputil.ReverseProxy
+	proxies    []*net.IPNet
+	proxyHosts []string
+	hostMu     sync.Mutex
+	resolved   []net.IP
+	resolvedAt time.Time
 }
 
 func New(api *config.API, mgr *lifecycle.Manager, login *authgate.Bucket, met *metrics.Metrics, trustedProxies []string) (*Handler, error) {
@@ -33,13 +39,15 @@ func New(api *config.API, mgr *lifecycle.Manager, login *authgate.Bucket, met *m
 	if err != nil {
 		return nil, err
 	}
+	// Each entry is a CIDR or a hostname to resolve.
 	var proxies []*net.IPNet
+	var hosts []string
 	for _, c := range trustedProxies {
-		_, n, err := net.ParseCIDR(c)
-		if err != nil {
-			return nil, fmt.Errorf("trusted proxy %q: %w", c, err)
+		if _, n, err := net.ParseCIDR(c); err == nil {
+			proxies = append(proxies, n)
+		} else {
+			hosts = append(hosts, c)
 		}
-		proxies = append(proxies, n)
 	}
 	rp := httputil.NewSingleHostReverseProxy(u)
 	rp.FlushInterval = -1 // stream SSE immediately
@@ -47,7 +55,7 @@ func New(api *config.API, mgr *lifecycle.Manager, login *authgate.Bucket, met *m
 		writeErr(w, http.StatusBadGateway, "UPSTREAM_ERROR", err.Error(), 0)
 	}
 	return &Handler{api: api, mgr: mgr, auth: authgate.NewVerifier(api.JWT.Secret, api.JWT.Issuer, api.JWT.Audience),
-		login: login, met: met, rproxy: rp, proxies: proxies}, nil
+		login: login, met: met, rproxy: rp, proxies: proxies, proxyHosts: hosts}, nil
 }
 
 func writeErr(w http.ResponseWriter, status int, code, msg string, retryAfter int) {
@@ -84,7 +92,31 @@ func (h *Handler) trusted(ip net.IP) bool {
 			return true
 		}
 	}
+	for _, p := range h.proxyIPs() {
+		if p.Equal(ip) {
+			return true
+		}
+	}
 	return false
+}
+
+// proxyIPs resolves the trusted proxy hostnames (the nginx container, whose address Docker
+// assigns), cached for 30 s.
+func (h *Handler) proxyIPs() []net.IP {
+	h.hostMu.Lock()
+	defer h.hostMu.Unlock()
+	if len(h.proxyHosts) == 0 || time.Since(h.resolvedAt) < 30*time.Second {
+		return h.resolved
+	}
+	var ips []net.IP
+	for _, host := range h.proxyHosts {
+		addrs, err := net.LookupIP(host)
+		if err == nil {
+			ips = append(ips, addrs...)
+		}
+	}
+	h.resolved, h.resolvedAt = ips, time.Now()
+	return ips
 }
 
 func bearer(r *http.Request) string {

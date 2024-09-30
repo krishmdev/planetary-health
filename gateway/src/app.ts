@@ -52,7 +52,8 @@ function sendError(res: Response, err: unknown, log: Logger): void {
   const e = toHttpError(err);
   if (e.status >= 500) log.warn({ err: e.body }, 'request failed');
   if (e.retryAfter) res.setHeader('Retry-After', String(e.retryAfter));
-  res.status(e.status).json(e.body);
+  const freshness = (err as { freshness?: unknown } | null)?.freshness;
+  res.status(e.status).json(freshness ? { ...e.body, freshness } : e.body);
 }
 
 type Handler = (req: Request, res: Response) => Promise<unknown>;
@@ -293,9 +294,17 @@ export function createApp(d: AppDeps): express.Express {
         d.wallet.put({ label: b.username, mspId: d.mspId, ...creds });
         ({ result, receipt } = await d.ledger.submit(sub(req), fn, args));
       } catch (err) {
-        // Undo the CA registration and wallet entry so a retry starts clean.
-        d.wallet.remove(b.username);
-        await d.ca.revoke(registrar, b.username).catch((e: Error) => d.log.warn({ user: b.username, err: e.message }, 'could not revoke orphaned CA identity'));
+        // Only undo on a definitive failure (endorsement refused, or committed as invalid). After
+        // an ambiguous one (timeout, ordering unavailable) the registry entry may still commit,
+        // so the identity is kept and the admin can retry the chain step. Fabric CA keeps the
+        // revoked registration, so a compensated username can't be reused.
+        const e = toHttpError(err);
+        if (e.status < 500 || e.body.error === 'COMMIT_FAILED') {
+          d.wallet.remove(b.username);
+          await d.ca.revoke(registrar, b.username).catch((ce: Error) => d.log.warn({ user: b.username, err: ce.message }, 'could not revoke orphaned CA identity'));
+        } else {
+          d.log.warn({ user: b.username, err: e.body }, 'registry write outcome unknown; keeping the new identity');
+        }
         throw err;
       }
       d.users.upsert({

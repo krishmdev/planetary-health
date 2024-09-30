@@ -340,7 +340,7 @@ async function replicaChecks(alice: Api, recordId: string) {
     let d: Awaited<ReturnType<Api['call']>>;
     let revokeBlock = '';
     let catchUp: Promise<number | null> = Promise.resolve(null);
-    let heightAtRead: number | null = null;
+    let heightAtUnpause: number | null = null;
     try {
       await fillBlocks();
       // Revoke every lab consent Alice gave Chen, so only the seeded non-lab scope remains.
@@ -353,7 +353,7 @@ async function replicaChecks(alice: Api, recordId: string) {
       }
       if (!keepPaused) {
         docker('unpause', peer);
-        heightAtRead = await replicaHeight();
+        heightAtUnpause = await replicaHeight();
         catchUp = catchUpMs(Number(revokeBlock));
       }
       d = await api.call('POST', `/access/${g.body.grant.accessId}/deliver`);
@@ -363,8 +363,8 @@ async function replicaChecks(alice: Api, recordId: string) {
     // Restore the seeded consent for later steps.
     await grantConsent(alice, 'D-2001', ['lab', 'note', 'rx'], ['read', 'append']);
     // The replica was lagging at read time only if it had not yet committed the revocation's block.
-    const lagging = heightAtRead !== null && heightAtRead <= Number(revokeBlock);
-    return { consent, revokeBlock, status: d.status, body: d.body, heightAtRead, lagging, replicaCatchUpMs: await catchUp };
+    const lagging = heightAtUnpause !== null && heightAtUnpause <= Number(revokeBlock);
+    return { consent, revokeBlock, status: d.status, body: d.body, heightAtUnpause, lagging, replicaCatchUpMs: await catchUp };
   };
   try {
     await runReplicaSteps(lagRun, viaReplica);
@@ -374,7 +374,7 @@ async function replicaChecks(alice: Api, recordId: string) {
 }
 
 async function runReplicaSteps(
-  lagRun: (label: string, api: Api, keepPaused: boolean) => Promise<{ revokeBlock: string; status: number; body: any; heightAtRead: number | null; lagging: boolean; replicaCatchUpMs: number | null }>,
+  lagRun: (label: string, api: Api, keepPaused: boolean) => Promise<{ revokeBlock: string; status: number; body: any; heightAtUnpause: number | null; lagging: boolean; replicaCatchUpMs: number | null }>,
   viaReplica: Api,
 ) {
   // A lag run only counts if the replica was still behind the revocation when the read was sent;
@@ -387,7 +387,13 @@ async function runReplicaSteps(
 
   await step('freshness: lagging replica waits for the orderer boundary, then denies the revoked read', async () => {
     const r = await lagging('replica lag', viaReplica);
-    return { ok: r.lagging && r.status === 403, detail: { status: r.status, lagging: r.lagging, heightAtRead: r.heightAtRead, revokeBlock: r.revokeBlock, replicaCatchUpMs: r.replicaCatchUpMs, error: r.body.error } };
+    const f = r.body.freshness as { peerWaitMs?: number; waitedForBlock?: string } | undefined;
+    // The denial must come after an actual wait for the replica, up to the revocation's block.
+    const waited = !!f && (f.peerWaitMs ?? 0) > 0 && Number(f.waitedForBlock) >= Number(r.revokeBlock);
+    return {
+      ok: r.lagging && r.status === 403 && waited,
+      detail: { status: r.status, lagging: r.lagging, heightAtUnpause: r.heightAtUnpause, revokeBlock: r.revokeBlock, replicaCatchUpMs: r.replicaCatchUpMs, freshness: f, error: r.body.error },
+    };
   });
   await step('freshness: replica kept paused past the timeout returns 503, never stale PHI', async () => {
     const r = await lagRun('replica paused', viaReplica, true);
@@ -401,7 +407,7 @@ async function runReplicaSteps(
       const r = await lagging('control, freshness off', control);
       return {
         ok: r.lagging && r.status === 200 && typeof r.body.record?.phi === 'string',
-        detail: { status: r.status, lagging: r.lagging, heightAtRead: r.heightAtRead, revokeBlock: r.revokeBlock, replicaCatchUpMs: r.replicaCatchUpMs, freshness: r.body.freshness, error: r.body.error },
+        detail: { status: r.status, lagging: r.lagging, heightAtUnpause: r.heightAtUnpause, revokeBlock: r.revokeBlock, replicaCatchUpMs: r.replicaCatchUpMs, freshness: r.body.freshness, error: r.body.error },
       };
     });
   } else {

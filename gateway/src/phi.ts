@@ -75,7 +75,14 @@ export class PhiService {
   async deliver(user: string, accessId: string): Promise<Delivery> {
     if (this.store.get(accessId)) throw new ReplayError(accessId);
     const freshness = await this.waitFresh(user, accessId);
-    const record = await this.ledger.evaluate<PhiResponse>(user, 'ReadRecordPHI', [accessId], { readPeer: true });
+    let record: PhiResponse;
+    try {
+      record = await this.ledger.evaluate<PhiResponse>(user, 'ReadRecordPHI', [accessId], { readPeer: true });
+    } catch (err) {
+      // A denial still reports how fresh the peer was when it decided (no PHI in here).
+      if (err && typeof err === 'object') Object.assign(err, { freshness });
+      throw err;
+    }
     record.phi = openPhi(record.phi);
     this.store.consume({
       accessId,
