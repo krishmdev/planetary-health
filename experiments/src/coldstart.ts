@@ -106,7 +106,7 @@ async function main() {
   writeResult(
     'coldstart',
     {
-      description: `GET ${PATH} as Alice through the activator; ${N} trials per mode (${N_FULL} for full-cold). Login happens before scale-down.`,
+      description: `GET ${PATH} as Alice through the activator; ${N} trials per mode${N_FULL !== N ? ` (${N_FULL} for full-cold)` : ''}. Login happens before scale-down.`,
       rows,
       fullColdPhiRead: {
         trials: phiTrials.length,
