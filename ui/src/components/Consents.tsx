@@ -45,7 +45,8 @@ export function ConsentForm() {
           ))}
         </select>
       </label>
-      {providers.error && <ErrorState error={providers.error} />}
+      {providers.error && <ErrorState error={providers.error} onRetry={() => providers.refetch()} />}
+      {providers.data && active.length === 0 && <p className="hint">No clinicians are registered yet, so there is nobody to share with.</p>}
       <fieldset>
         <legend>Record types they may see</legend>
         <div className="checks">
@@ -85,11 +86,11 @@ export function ConsentForm() {
       </div>
       <div className="spread">
         <p className="xs muted">Signed with your own certificate. Both hospitals endorse it.</p>
-        <button type="submit" disabled={!grantee || types.length === 0 || actions.length === 0 || grant.isPending}>
+        <button type="submit" disabled={active.length === 0 || !grantee || types.length === 0 || actions.length === 0 || grant.isPending}>
           {grant.isPending ? 'Recording…' : 'Grant consent'}
         </button>
       </div>
-      {grant.error && <ErrorState error={grant.error} />}
+      {grant.error && <ErrorState error={grant.error} afterAction />}
       {grant.data && <TxReceipt receipt={grant.data.receipt} label={`consent ${grant.data.result.consentId}`} />}
     </form>
   );
@@ -114,7 +115,7 @@ export function ConsentList({ asPatient }: { asPatient: boolean }) {
     return <Empty title={asPatient ? 'You haven’t shared anything' : 'No patient has consented yet'}>{asPatient ? 'Nobody outside your own care can read your records.' : 'Patients grant access from their own view.'}</Empty>;
   return (
     <div className="table-wrap">
-      <table className="table">
+      <table className="table stackable">
         <caption className="sr-only">Consents</caption>
         <thead>
           <tr>
@@ -130,12 +131,12 @@ export function ConsentList({ asPatient }: { asPatient: boolean }) {
             const live = c.status === 'active' && !expired;
             return (
               <tr key={c.consentId}>
-                <td>
+                <td className="purpose" data-label={asPatient ? 'Clinician' : 'Patient'}>
                   <strong className="mono">{asPatient ? c.grantee : c.patientId}</strong>
                   <div className="xs muted">{c.purpose}</div>
                 </td>
-                <td>
-                  <div className="row" style={{ gap: 4 }}>
+                <td data-label="Scope">
+                  <div className="tags">
                     {c.types.map((t) => (
                       <span key={t} className="tag">
                         {t}
@@ -146,7 +147,7 @@ export function ConsentList({ asPatient }: { asPatient: boolean }) {
                     {c.actions.join(' + ')}
                   </div>
                 </td>
-                <td>
+                <td data-label="Status">
                   {live ? (
                     <span className="tag ok">
                       <span className="dot" /> active · {until(c.expiresAt)}
@@ -158,9 +159,15 @@ export function ConsentList({ asPatient }: { asPatient: boolean }) {
                   )}
                 </td>
                 {asPatient && (
-                  <td>
+                  <td className="actions">
                     {live && (
-                      <button type="button" className="ghost" onClick={() => revoke.mutate(c.consentId)} disabled={revoke.isPending}>
+                      <button
+                        type="button"
+                        className="ghost"
+                        aria-label={`Revoke consent for ${c.grantee} (${c.types.join(', ')})`}
+                        onClick={() => revoke.mutate(c.consentId)}
+                        disabled={revoke.isPending}
+                      >
                         Revoke
                       </button>
                     )}
@@ -171,7 +178,7 @@ export function ConsentList({ asPatient }: { asPatient: boolean }) {
           })}
         </tbody>
       </table>
-      {revoke.error && <ErrorState error={revoke.error} />}
+      {revoke.error && <ErrorState error={revoke.error} afterAction />}
       {last && (
         <div className="body">
           <TxReceipt receipt={last.receipt} label={`revoked ${last.id}`} />

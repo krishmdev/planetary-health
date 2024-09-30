@@ -42,7 +42,7 @@ function Reviews() {
           </div>
         </li>
       ))}
-      {review.error && <ErrorState error={review.error} />}
+      {review.error && <ErrorState error={review.error} afterAction />}
     </ol>
   );
 }
@@ -59,7 +59,7 @@ function Members({ onAudit }: { onAudit: (pid: string) => void }) {
   if (q.error) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
   return (
     <div className="table-wrap">
-      <table className="table">
+      <table className="table stackable">
         <caption className="sr-only">Registry entries for this hospital</caption>
         <thead>
           <tr>
@@ -73,19 +73,19 @@ function Members({ onAudit }: { onAudit: (pid: string) => void }) {
         <tbody>
           {q.data.map((m) => (
             <tr key={m.id}>
-              <td className="mono">{m.id}</td>
-              <td>{m.role}</td>
-              <td className="mono xs">{m.enrollmentId}</td>
-              <td>{m.active ? <span className="tag ok">active</span> : <span className="tag bad">deactivated</span>}</td>
-              <td>
+              <td className="mono" data-label="ID">{m.id}</td>
+              <td data-label="Role">{m.role}</td>
+              <td className="mono xs" data-label="Certificate">{m.enrollmentId}</td>
+              <td data-label="Status">{m.active ? <span className="tag ok">active</span> : <span className="tag bad">deactivated</span>}</td>
+              <td className="actions">
                 <div className="row" style={{ justifyContent: 'flex-end' }}>
                   {m.role === 'patient' && (
-                    <button type="button" className="link" onClick={() => onAudit(m.id)}>
+                    <button type="button" className="link" aria-label={`Show audit trail for ${m.id}`} onClick={() => onAudit(m.id)}>
                       audit
                     </button>
                   )}
                   {m.active && m.id !== session!.user.ehrId && (
-                    <button type="button" className="ghost" onClick={() => deactivate.mutate(m.id)} disabled={deactivate.isPending}>
+                    <button type="button" className="ghost" aria-label={`Deactivate ${m.role} ${m.id}`} onClick={() => deactivate.mutate(m.id)} disabled={deactivate.isPending}>
                       Deactivate
                     </button>
                   )}
@@ -95,7 +95,7 @@ function Members({ onAudit }: { onAudit: (pid: string) => void }) {
           ))}
         </tbody>
       </table>
-      {deactivate.error && <ErrorState error={deactivate.error} />}
+      {deactivate.error && <ErrorState error={deactivate.error} afterAction />}
     </div>
   );
 }
@@ -157,7 +157,7 @@ function Register() {
           {m.isPending ? 'Enrolling…' : 'Register'}
         </button>
       </div>
-      {m.error && <ErrorState error={m.error} />}
+      {m.error && <ErrorState error={m.error} afterAction />}
       {m.data && <TxReceipt receipt={m.data.receipt} label={`registered ${m.data.member.id}`} />}
     </form>
   );
