@@ -38,6 +38,6 @@ always-on in every mapping, for the reasons in the README.
 ## What the local numbers do and don't say
 
 E1 and E4 measure Docker containers on one laptop VM. A managed platform adds its own cold
-start (image fetch, VM boot) and bills differently. The measurements show the shape of the
-trade-off: which components can sleep, what waking the endorsement path costs, and how much
-idle memory-time that saves. They are not a price quote.
+start (image fetch, VM boot) and bills differently. The measurements show which components can
+sleep, what it costs to wake the endorsement path, and how much idle memory-time that saves. They
+are not a price quote.
