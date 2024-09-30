@@ -81,7 +81,7 @@ replay evaluations or read its own peer's private data store directly.
 Evaluate-time checks (grant expiry, consent expiry) use the proposal timestamp. The org's own
 gateway sets it, which is inside the trust boundary above.
 
-## Freshness: why a read can't miss an already-committed revocation
+## Freshness: how the read is bounded against committed revocations
 
 - A grant is fresh by construction. `RequestAccess` reads the consent and break-glass keys by
   range query during simulation. If a revocation commits first, validation marks the grant
@@ -96,7 +96,11 @@ gateway sets it, which is inside the trust boundary above.
     readiness check) fail with 503.
   - The value is also at least the height of one honest orderer that answered.
 - The residual window, stated plainly: the second-largest answer can come from an honest orderer
-  that is a few milliseconds behind its peers while it writes a block. A revocation in exactly
+  that is a few milliseconds behind its peers while it writes a block. With one Byzantine
+  orderer answering low and one lagging honest orderer among the three answers, the boundary can
+  sit below a block that already holds a committed revocation.
+- This rule (n−f answers, the (f+1)-th largest) deliberately differs from the plan's "max of
+  f+1 answers", which a single orderer could inflate to make every read wait and fail. A revocation in exactly
   that newest block could then fall just outside the boundary. This is the same kind of exposure
   as the concurrent case below, and is bounded the same way. Block signatures on the Deliver
   replies are not verified, and strict Byzantine-safe freshness is not claimed.
