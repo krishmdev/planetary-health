@@ -1,0 +1,313 @@
+{
+  "experiment": "coldstart",
+  "description": "GET /patients/P-1001/records as Alice through the activator; 20 trials per mode (20 for full-cold). Login happens before scale-down.",
+  "rows": [
+    {
+      "mode": "warm",
+      "trials": 20,
+      "failures": 0,
+      "coldResponses": 0,
+      "latencyMs": {
+        "n": 20,
+        "p50": 23.9,
+        "p95": 29.5,
+        "p99": 32,
+        "min": 9.5,
+        "max": 32,
+        "mean": 22.8
+      },
+      "activationMs": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "min": null,
+        "max": null,
+        "mean": null
+      },
+      "startMs": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "min": null,
+        "max": null,
+        "mean": null
+      },
+      "readyMs": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "min": null,
+        "max": null,
+        "mean": null
+      },
+      "samplesMs": [
+        10,
+        14,
+        29,
+        32,
+        22,
+        18,
+        28,
+        24,
+        19,
+        26,
+        25,
+        25,
+        25,
+        28,
+        9,
+        24,
+        28,
+        23,
+        22,
+        22
+      ]
+    },
+    {
+      "mode": "resume",
+      "trials": 20,
+      "failures": 0,
+      "coldResponses": 20,
+      "latencyMs": {
+        "n": 20,
+        "p50": 37.2,
+        "p95": 49.4,
+        "p99": 51.3,
+        "min": 32.7,
+        "max": 51.3,
+        "mean": 39.9
+      },
+      "activationMs": {
+        "n": 20,
+        "p50": 29,
+        "p95": 39,
+        "p99": 40,
+        "min": 27,
+        "max": 40,
+        "mean": 31.4
+      },
+      "startMs": {
+        "n": 20,
+        "p50": 15,
+        "p95": 21,
+        "p99": 27,
+        "min": 13,
+        "max": 27,
+        "mean": 16.4
+      },
+      "readyMs": {
+        "n": 20,
+        "p50": 29,
+        "p95": 39,
+        "p99": 40,
+        "min": 27,
+        "max": 40,
+        "mean": 31.4
+      },
+      "samplesMs": [
+        41,
+        42,
+        44,
+        33,
+        43,
+        36,
+        35,
+        34,
+        35,
+        37,
+        46,
+        36,
+        49,
+        39,
+        51,
+        46,
+        41,
+        37,
+        37,
+        35
+      ]
+    },
+    {
+      "mode": "api-cold",
+      "trials": 20,
+      "failures": 0,
+      "coldResponses": 20,
+      "latencyMs": {
+        "n": 20,
+        "p50": 823.8,
+        "p95": 862.8,
+        "p99": 866.9,
+        "min": 595.5,
+        "max": 866.9,
+        "mean": 750.3
+      },
+      "activationMs": {
+        "n": 20,
+        "p50": 809,
+        "p95": 846,
+        "p99": 855,
+        "min": 582,
+        "max": 855,
+        "mean": 736
+      },
+      "startMs": {
+        "n": 20,
+        "p50": 105,
+        "p95": 136,
+        "p99": 152,
+        "min": 95,
+        "max": 152,
+        "mean": 112.4
+      },
+      "readyMs": {
+        "n": 20,
+        "p50": 809,
+        "p95": 846,
+        "p99": 855,
+        "min": 582,
+        "max": 855,
+        "mean": 736
+      },
+      "samplesMs": [
+        860,
+        867,
+        826,
+        621,
+        863,
+        613,
+        844,
+        842,
+        595,
+        822,
+        830,
+        824,
+        633,
+        608,
+        603,
+        615,
+        845,
+        834,
+        634,
+        826
+      ]
+    },
+    {
+      "mode": "full-cold",
+      "trials": 20,
+      "failures": 0,
+      "coldResponses": 20,
+      "latencyMs": {
+        "n": 20,
+        "p50": 4507.2,
+        "p95": 4654.2,
+        "p99": 4978.8,
+        "min": 4422.3,
+        "max": 4978.8,
+        "mean": 4542.8
+      },
+      "activationMs": {
+        "n": 20,
+        "p50": 4489,
+        "p95": 4641,
+        "p99": 4964,
+        "min": 4404,
+        "max": 4964,
+        "mean": 4526.6
+      },
+      "startMs": {
+        "n": 20,
+        "p50": 388,
+        "p95": 440,
+        "p99": 462,
+        "min": 352,
+        "max": 462,
+        "mean": 395.1
+      },
+      "readyMs": {
+        "n": 20,
+        "p50": 4489,
+        "p95": 4641,
+        "p99": 4964,
+        "min": 4404,
+        "max": 4964,
+        "mean": 4526.6
+      },
+      "samplesMs": [
+        4537,
+        4509,
+        4497,
+        4593,
+        4456,
+        4654,
+        4477,
+        4422,
+        4505,
+        4535,
+        4979,
+        4507,
+        4544,
+        4506,
+        4588,
+        4492,
+        4458,
+        4599,
+        4484,
+        4514
+      ]
+    }
+  ],
+  "fullColdPhiRead": {
+    "trials": 5,
+    "succeeded": 5,
+    "latencyMs": {
+      "n": 5,
+      "p50": 4628.9,
+      "p95": 4666.1,
+      "p99": 4666.1,
+      "min": 4557.9,
+      "max": 4666.1,
+      "mean": 4626.1
+    },
+    "statuses": [
+      200,
+      200,
+      200,
+      200,
+      200
+    ]
+  },
+  "run_manifest": {
+    "recorded_at": "2024-09-24T21:29:54-0400",
+    "host": {
+      "chip": "Apple M1 Pro",
+      "ram_gb": 16,
+      "os": "Darwin 26.5.1",
+      "python": "3.14.6",
+      "power": "Now drawing from 'Battery Power'"
+    },
+    "exclusive_compute": {
+      "held": true,
+      "holder": "planetary-fabric"
+    },
+    "load": {
+      "loadavg": [
+        "6.55",
+        "33.07",
+        "70.01"
+      ],
+      "cpu_usage": "CPU usage: 8.35% user, 17.63% sys, 74.1% idle",
+      "docker_containers_running": 21,
+      "swap": "total = 9216.00M  used = 8471.25M  free = 744.75M  (encrypted)"
+    },
+    "extra": {
+      "experiment": "coldstart",
+      "device": "docker-desktop-arm64",
+      "request": "/patients/P-1001/records",
+      "n": "20",
+      "n_full": "20"
+    }
+  }
+}

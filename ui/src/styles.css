@@ -223,3 +223,12 @@ legend { font-size: var(--t-sm); font-weight: 600; padding: 0 var(--s1); }
 .reveal:nth-child(3) { animation-delay: 120ms; }
 .reveal:nth-child(4) { animation-delay: 180ms; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+
+/* Checkbox + label on one line, and a tighter top bar on phones. */
+label.row { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--s2); }
+label.row input { flex: none; }
+@media (max-width: 560px) {
+  .brand .muted { display: none; }
+  .brand strong { font-size: var(--t-md); }
+  .who { gap: var(--s2); }
+}

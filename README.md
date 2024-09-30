@@ -151,8 +151,62 @@ not an experiment manifest. `pnpm -C experiments report` will populate the table
 the experiment result files exist.
 
 <!-- experiments:start -->
-Not run yet.
+| Experiment | Configuration | Metric | Result |
+|---|---|---|---|
+| E1 cold start | warm (n=20) | p50 / p95 latency | 24 / 30 ms |
+| E1 cold start | resume (n=20) | p50 / p95 latency | 37 / 49 ms |
+| E1 cold start | api-cold (n=20) | p50 / p95 latency | 824 / 863 ms |
+| E1 cold start | full-cold (n=20) | p50 / p95 latency | 4,507 / 4,654 ms |
+| E1 cold start | PHI read after both orgs idle | p50 latency, successes | 4,629 ms, 5/5 |
+| E2 throughput | 1 clients, BFT vs Raft | TPS; commit p50 | 17.6 vs 12.1 TPS; 43 vs 68 ms |
+| E2 throughput | 8 clients, BFT vs Raft | TPS; commit p50 | 101.0 vs 85.1 TPS; 41 vs 72 ms |
+| E2 throughput | 32 clients, BFT vs Raft | TPS; commit p50 | 160.3 vs 239.7 TPS; 103 vs 60 ms |
+| E2 throughput | 64 clients, BFT vs Raft | TPS; commit p50 | 146.0 vs 253.2 TPS; 203 vs 108 ms |
+| E3 faults | SmartBFT: follower down / leader down / 2 of 4 down | TPS; time to next commit; commits | 125.5 TPS; 21.7 s; 0 |
+| E3 faults | etcdraft: follower down / leader down / 2 of 4 down | TPS; time to next commit; commits | 98.0 TPS; 10.2 s; 0 |
+| E4 idle cost | always-on, 600s × 3 repeats | CPU-s; GiB·s (saved); per repeat | 39.1; 302 (0.0%); 342.2 / 282 / 281 |
+| E4 idle cost | s2z-api, 600s × 3 repeats | CPU-s; GiB·s (saved); per repeat | 40.6; 222 (26.5%); 251.5 / 207.6 / 206.7 |
+| E4 idle cost | s2z-full, 600s × 3 repeats | CPU-s; GiB·s (saved); per repeat | 26.5; 159 (47.4%); 175.7 / 150.5 / 150.3 |
+| e2e | live network, host gateways | checks passed | 27/27 |
+
+![E1 cold start](experiments/figures/coldstart.svg)
+
+![E3 fault timeline](experiments/figures/faults.svg)
+
+![E4 idle memory-time](experiments/figures/idle.svg)
+
+Full tables: [experiments/RESULTS.md](experiments/RESULTS.md).
 <!-- experiments:end -->
+
+What the numbers say, and what they don't:
+
+- **Cold starts (E1).** Resuming a paused API costs little over a warm request. Starting a
+  stopped API costs most of a second, dominated by the readiness check (orderer boundary plus a
+  real two-org endorsement), not by `docker start`. A full cold start also boots both peers and
+  relaunches their chaincode containers, and costs several seconds. The first PHI read after
+  both hospitals idle (a grant submit plus a delivery) succeeded in every trial.
+- **BFT vs Raft on the same four orderers (E2).** SmartBFT committed more transactions per second
+  at 1 and 8 clients. etcdraft pulled ahead at 32 and 64 clients, with lower commit latency. Both
+  channels cut blocks at 10 messages; SmartBFT takes `RequestBatchMaxCount` from
+  `BatchSize.MaxMessageCount` (`orderer/consensus/smartbft/util.go` in v3.1.5). The levels were
+  interleaved, alternating which channel ran first.
+- **Faults (E3).** Both channels kept committing with one follower down. After the leader was
+  stopped, both stalled until a new leader took over, and neither committed with two of four
+  orderers down. After everything was restarted, Raft resumed within the window, but SmartBFT had
+  not committed again by the end of the 240 s run. E3's error log did not capture the gateway's
+  "insufficient number of orderers" quorum message (its errors with two orderers down were
+  other unavailable/timeout errors). The separate [BFT demo](docs/bft-demo.md) did get that exact
+  message. The demo's leader-failover time is also longer than E3's; both runs are in the
+  results files.
+- **Idle cost (E4).** Scaling the APIs to zero cut idle memory-time by about a quarter, and scaling
+  peers too cut it by almost half. The always-on orderers are a fixed floor in every mode. CPU
+  barely moved in api mode (the idle APIs used little CPU to begin with). In s2z-full the peers
+  only sleep after 300 s, so for about half of each 600 s window. This supports the paper's
+  thesis for memory-time at the API and peer tier. It says nothing about managed-platform prices,
+  and Docker Desktop's VM overhead isn't counted.
+
+![Doctor view](docs/screenshots/doctor-desktop.png)
+![Admin view](docs/screenshots/admin-desktop.png)
 
 ## Testing
 
@@ -201,6 +255,13 @@ hospital's gateway. All four orderers are run by one organization on one host.
 - Nothing is deployed to AWS or Fly. [docs/serverless-deployment.md](docs/serverless-deployment.md)
   is a paper mapping.
 - The activator holds the Docker socket, which is root-equivalent on the host.
+- Once, a BFT channel that had been idle for about four hours stopped committing (height stuck;
+  orderer cluster sends failing with EOF) and a restart of the orderers didn't fix it. A fresh
+  network didn't reproduce it, and the cause was not found.
+- The replica catch-up time after a pause varied from tens of milliseconds to more than 5 s
+  between runs. That is why the e2e's replica gateways use a 15 s freshness timeout.
+- Mobile screenshots aren't committed: the last run showed a wrapping checkbox and a crowded top
+  bar. The CSS is fixed but the phone layout wasn't re-shot on the live stack.
 
 ## Related work
 

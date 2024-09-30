@@ -26,7 +26,7 @@ const fmt = (v: number | null | undefined, d = 0) => (v === null || v === undefi
 function niceMax(v: number): number {
   if (v <= 0) return 1;
   const p = 10 ** Math.floor(Math.log10(v));
-  for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p;
+  for (const m of [1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
   return 10 * p;
 }
 
