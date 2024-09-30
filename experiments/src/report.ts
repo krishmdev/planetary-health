@@ -178,7 +178,7 @@ interface FaultsResult {
     phases: { baselineTps: number; followerDownTps: number; afterLeaderStopTps: number; twoDownCommits: number; recoveredTps: number };
     leaderStopToNextCommitS: number | null;
     restartToNextCommitS: number | null;
-    twoDownProbes: { sent: number; committed: number; quorumMessageSeen: boolean; errorKinds: Record<string, number> };
+    twoDownProbes?: { sent: number; committed: number; quorumMessageSeen: boolean; errorKinds: Record<string, number> };
   }[];
 }
 interface IdleResult {
@@ -190,6 +190,32 @@ interface E2EResult {
   passed: number;
   failed: number;
   steps: { name: string; ok: boolean }[];
+}
+
+// Memory-time saving vs the always-on baseline using repeats 2..n only (repeat 1 of every mode
+// ran high right after the stack came up).
+function steadySaved(mode: number[], base: number[]): number {
+  const m = (xs: number[]) => (xs.length > 1 ? xs.slice(1) : xs).reduce((a, b) => a + b, 0) / Math.max(1, xs.length > 1 ? xs.length - 1 : xs.length);
+  return (1 - m(mode) / m(base)) * 100;
+}
+
+interface Manifest {
+  recorded_at?: string;
+  host?: { power?: string };
+  load?: { swap?: string; loadavg?: string[] };
+}
+
+function conditions(): string[] {
+  const rows = ['| Result file | Recorded | Power | Swap in use | Load avg (1/5/15 min) |', '|---|---|---|---|---|'];
+  for (const name of ['e2e', 'bft-demo', 'throughput', 'faults', 'coldstart', 'idle']) {
+    const r = load<{ run_manifest?: Manifest; ran_at?: string }>(name);
+    if (!r) continue;
+    const m = r.run_manifest;
+    const power = /'([^']+)'/.exec(m?.host?.power ?? '')?.[1] ?? 'not recorded';
+    const swap = /used = ([\d.]+M)/.exec(m?.load?.swap ?? '')?.[1] ?? 'not recorded';
+    rows.push(`| ${name}.json | ${m?.recorded_at ?? r.ran_at ?? ''} | ${power} | ${swap} | ${m?.load?.loadavg?.join(' / ') ?? 'not recorded'} |`);
+  }
+  return rows;
 }
 
 function main() {
@@ -218,13 +244,13 @@ function main() {
   if (faults) {
     for (const r of faults.results) {
       md.push(
-        `| E3 faults | ${r.consensus}: follower down / leader down / 2 of 4 down / restart | TPS; next commit; commits; recovery | ${fmt(r.phases.followerDownTps, 1)} TPS; ${fmt(r.leaderStopToNextCommitS, 1)} s; ${r.phases.twoDownCommits}${r.twoDownProbes.quorumMessageSeen ? ' (quorum error)' : ''}; after restart: ${r.restartToNextCommitS === null ? 'no commit before end of run' : `${fmt(r.restartToNextCommitS, 1)} s`} |`,
+        `| E3 faults | ${r.consensus}: follower down / leader down / 2 of 4 down / restart | TPS; next commit; commits; recovery | ${fmt(r.phases.followerDownTps, 1)} TPS; ${fmt(r.leaderStopToNextCommitS, 1)} s; ${r.phases.twoDownCommits}${r.twoDownProbes?.quorumMessageSeen ? ' (quorum error)' : ''}; after restart: ${r.restartToNextCommitS === null ? 'no commit before end of run' : `${fmt(r.restartToNextCommitS, 1)} s`} |`,
       );
     }
   } else md.push('| E3 faults | | | not run |');
   if (idle) {
     for (const r of idle.summary)
-      md.push(`| E4 idle cost | ${r.mode}, ${idle.config.windowS}s × ${idle.config.repeats} repeats${idle.config.repeats < 3 ? ' (plan: 3)' : ''} | CPU-s; GiB·s (saved); per repeat | ${fmt(r.totalCpuSeconds, 1)}; ${fmt(r.totalMemGiBSeconds, 1)} (${fmt(r.memSavedPct, 1)}%); ${r.perRepeatTotalMem.map((v) => fmt(v, 1)).join(' / ')} |`);
+      md.push(`| E4 idle cost | ${r.mode}, ${idle.config.windowS}s × ${idle.config.repeats} repeats${idle.config.repeats < 3 ? ' (plan: 3)' : ''} | CPU-s; GiB·s (saved); per repeat; saved excl. repeat 1 | ${fmt(r.totalCpuSeconds, 1)}; ${fmt(r.totalMemGiBSeconds, 1)} (${fmt(r.memSavedPct, 1)}%); ${r.perRepeatTotalMem.map((v) => fmt(v, 1)).join(' / ')}; ${fmt(steadySaved(r.perRepeatTotalMem, idle.summary[0]!.perRepeatTotalMem), 1)}% |`);
   } else md.push('| E4 idle cost | | | not run |');
   if (e2e) md.push(`| e2e | live network, host gateways | checks passed | ${e2e.passed}/${e2e.passed + e2e.failed} |`);
 
@@ -259,7 +285,7 @@ function main() {
   if (faults) {
     detail.push('## E3 faults', '', 'Recovery times are from the 1 s probe: the time until a freshly sent Ping committed.', '', '| Consensus | baseline TPS | follower down TPS | leader stop → next commit | after leader stop TPS | commits with 2 down | 2-down probe errors | restart → next commit | recovered TPS |', '|---|---|---|---|---|---|---|---|---|');
     for (const r of faults.results)
-      detail.push(`| ${r.consensus} | ${fmt(r.phases.baselineTps, 1)} | ${fmt(r.phases.followerDownTps, 1)} | ${fmt(r.leaderStopToNextCommitS, 1)} s | ${fmt(r.phases.afterLeaderStopTps, 1)} | ${r.phases.twoDownCommits} | ${Object.entries(r.twoDownProbes.errorKinds).map(([k, v]) => `${k}: ${v}`).join('; ') || 'none'} | ${r.restartToNextCommitS === null ? 'none before end' : `${fmt(r.restartToNextCommitS, 1)} s`} | ${fmt(r.phases.recoveredTps, 1)} |`);
+      detail.push(`| ${r.consensus} | ${fmt(r.phases.baselineTps, 1)} | ${fmt(r.phases.followerDownTps, 1)} | ${fmt(r.leaderStopToNextCommitS, 1)} s | ${fmt(r.phases.afterLeaderStopTps, 1)} | ${r.phases.twoDownCommits} | ${Object.entries(r.twoDownProbes?.errorKinds ?? {}).map(([k, v]) => `${k}: ${v}`).join('; ') || 'none'} | ${r.restartToNextCommitS === null ? 'none before end' : `${fmt(r.restartToNextCommitS, 1)} s`} | ${fmt(r.phases.recoveredTps, 1)} |`);
     detail.push('');
   }
   if (idle) {
@@ -272,12 +298,13 @@ function main() {
   if (e2e) {
     detail.push('## e2e', '', `Run ${e2e.ran_at}: ${e2e.passed} passed, ${e2e.failed} failed.`, '', ...e2e.steps.map((s) => `- ${s.ok ? 'PASS' : 'FAIL'} ${s.name}`), '');
   }
+  detail.push('## Run conditions', '', 'From each file\'s run manifest. Other agents\' workloads were running on the same machine; the compute lease kept heavy work from overlapping but not everything else.', '', ...conditions(), '');
   fs.writeFileSync(path.join(ROOT, 'experiments/RESULTS.md'), detail.join('\n'));
 
   const readme = path.join(ROOT, 'README.md');
   if (fs.existsSync(readme)) {
     const text = fs.readFileSync(readme, 'utf8');
-    const block = ['<!-- experiments:start -->', ...md, '', ...figures.flatMap((f) => [f, '']), 'Full tables: [experiments/RESULTS.md](experiments/RESULTS.md).', '<!-- experiments:end -->'].join('\n');
+    const block = ['<!-- experiments:start -->', ...md, '', 'Run conditions (from the manifests):', '', ...conditions(), '', ...figures.flatMap((f) => [f, '']), 'Full tables: [experiments/RESULTS.md](experiments/RESULTS.md).', '<!-- experiments:end -->'].join('\n');
     const next = text.replace(/<!-- experiments:start -->[\s\S]*<!-- experiments:end -->/, block);
     fs.writeFileSync(readme, next);
   }

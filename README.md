@@ -1,16 +1,16 @@
 # Planetary Health
 
-A decentralized electronic health record on Hyperledger Fabric 3.1.5. Two hospitals, Mercy
-General (Org1) and Riverside Clinic (Org2), share one channel ordered by four SmartBFT orderers,
-so one orderer can crash or lie without stopping the network. Smart-contract access control
-decides who can read which records: patient consent scoped by record type and expiry, audited
-break-glass for emergencies, and metadata-only access for administrators. Both hospitals' peers
-re-check that policy on every write.
+This decentralized electronic health record runs on Hyperledger Fabric 3.1.5. Mercy General
+(Org1) and Riverside Clinic (Org2) share a channel with four SmartBFT orderers. The network
+keeps working if one orderer crashes or lies. Smart-contract access control decides who can read
+each record using patient consent scoped by record type and expiry, audited break-glass access
+for emergencies, and metadata-only access for administrators. Both hospitals' peers check the
+policy again on every write.
 
-A Go "activator" in front of each hospital's API scales it, and optionally its peers, to zero
-when idle. This tests the thesis of Rana, Lu and Singh (IEEE CCCI 2024, see [Related work](#related-work))
-that serverless-style deployment cuts the cost of a blockchain EHR. Everything runs locally on
-Docker; nothing is deployed anywhere.
+A Go "activator" in front of each hospital's API scales the API, and optionally its peers, to
+zero when idle. The project tests Rana, Lu and Singh's argument (IEEE CCCI 2024, see
+[Related work](#related-work)) that serverless-style deployment can cut the cost of a blockchain
+EHR. Everything runs locally in Docker; nothing is deployed elsewhere.
 
 ## Architecture
 
@@ -35,7 +35,7 @@ flowchart LR
 | Activator (Go) | `activator` | Scale-to-zero proxy over the Docker Engine API, with endorsement-group wakes. |
 | UI (React 19 + Vite) | `ui` | Patient, doctor and admin views, and a network panel. |
 | Network scripts | `network` | fabric-samples test network at a pinned commit, the Raft comparison channel, the read replica, CRL revocation. |
-| Experiments | `experiments` | E1–E4 harness; writes `experiments/results/*.json` and the tables below. |
+| Experiments | `experiments` | E1-E4 harness; writes `experiments/results/*.json` and the tables below. |
 
 ## What's on-chain and what isn't
 
@@ -95,8 +95,8 @@ Other targets:
 
 ## How reading PHI works
 
-A submit's response ends up in the block, and an evaluate doesn't commit, so a PHI read can't
-be one transaction. It is two, plus gateway-side bookkeeping:
+A submit response ends up in a block, while an evaluate does not commit. A PHI read therefore
+needs two transactions and gateway-side bookkeeping:
 
 1. **Grant.** `RequestAccess` is submitted and endorsed by both hospitals. The policy runs
    against current consent and break-glass keys, then an `AccessGrant` is written: actor
@@ -136,19 +136,18 @@ Modes:
   3. a real `Ping` proposal is endorsed by both orgs and thrown away;
   4. every group peer's ledger height has passed the boundary.
 
-The four BFT orderers stay always on. Sleeping replicas provide no fault tolerance: progress
-needs 3 of 4 live consenters. Waking a replica means catch-up and possibly a view change, with
-20 s complaint and view-change timeouts. Only live replicas can complain about a faulty leader.
-Orderers are shared consortium infrastructure, so the per-hospital savings the paper argues for
-come from the API and peer tier. E4 measures what the always-on orderers cost.
+The four BFT orderers stay on. Progress needs 3 of 4 live consenters, so a sleeping replica adds
+no fault tolerance. When a replica wakes, it must catch up and may need a view change; complaint
+and view-change timeouts are 20 s. Only live replicas can complain about a faulty leader. The
+orderers are shared consortium infrastructure. The per-hospital savings in the paper's argument
+come from the API and peer tier; E4 measures the cost of keeping orderers on.
 
 ## Results
 
-The E1–E4 experiments have not been run yet, so there are no cost, latency, throughput, or fault
-measurements to report. The local EHR scenario run recorded 27 passing checks in
-[`experiments/results/e2e.json`](experiments/results/e2e.json); that file records check results,
-not an experiment manifest. `pnpm -C experiments report` will populate the tables below after
-the experiment result files exist.
+`pnpm -C experiments report` generates the numbers below from `experiments/results/*.json`.
+Each file contains a run manifest with host, load, swap and compute-lease holder. The runs used
+one Apple M1 Pro (16 GB) and Docker Desktop's ~7.7 GB VM while other workloads were active. The
+measurements support relative comparisons, not absolute performance claims.
 
 <!-- experiments:start -->
 | Experiment | Configuration | Metric | Result |
@@ -162,12 +161,23 @@ the experiment result files exist.
 | E2 throughput | 8 clients, BFT vs Raft | TPS; commit p50 | 101.0 vs 85.1 TPS; 41 vs 72 ms |
 | E2 throughput | 32 clients, BFT vs Raft | TPS; commit p50 | 160.3 vs 239.7 TPS; 103 vs 60 ms |
 | E2 throughput | 64 clients, BFT vs Raft | TPS; commit p50 | 146.0 vs 253.2 TPS; 203 vs 108 ms |
-| E3 faults | SmartBFT: follower down / leader down / 2 of 4 down | TPS; time to next commit; commits | 125.5 TPS; 21.7 s; 0 |
-| E3 faults | etcdraft: follower down / leader down / 2 of 4 down | TPS; time to next commit; commits | 98.0 TPS; 10.2 s; 0 |
-| E4 idle cost | always-on, 600s × 3 repeats | CPU-s; GiB·s (saved); per repeat | 39.1; 302 (0.0%); 342.2 / 282 / 281 |
-| E4 idle cost | s2z-api, 600s × 3 repeats | CPU-s; GiB·s (saved); per repeat | 40.6; 222 (26.5%); 251.5 / 207.6 / 206.7 |
-| E4 idle cost | s2z-full, 600s × 3 repeats | CPU-s; GiB·s (saved); per repeat | 26.5; 159 (47.4%); 175.7 / 150.5 / 150.3 |
+| E3 faults | SmartBFT: follower down / leader down / 2 of 4 down / restart | TPS; next commit; commits; recovery | 125.5 TPS; 21.7 s; 0; after restart: 61.8 s |
+| E3 faults | etcdraft: follower down / leader down / 2 of 4 down / restart | TPS; next commit; commits; recovery | 98.0 TPS; 10.2 s; 0; after restart: 15.4 s |
+| E4 idle cost | always-on, 600s × 3 repeats | CPU-s; GiB·s (saved); per repeat; saved excl. repeat 1 | 39.1; 301.7 (0.0%); 342.2 / 282.0 / 281.0; 0.0% |
+| E4 idle cost | s2z-api, 600s × 3 repeats | CPU-s; GiB·s (saved); per repeat; saved excl. repeat 1 | 40.6; 221.9 (26.5%); 251.5 / 207.6 / 206.7; 26.4% |
+| E4 idle cost | s2z-full, 600s × 3 repeats | CPU-s; GiB·s (saved); per repeat; saved excl. repeat 1 | 26.5; 158.8 (47.4%); 175.7 / 150.5 / 150.3; 46.6% |
 | e2e | live network, host gateways | checks passed | 27/27 |
+
+Run conditions (from the manifests):
+
+| Result file | Recorded | Power | Swap in use | Load avg (1/5/15 min) |
+|---|---|---|---|---|
+| e2e.json | 2024-09-24T19:27:20.838Z | not recorded | not recorded | not recorded |
+| bft-demo.json | 2024-09-24T15:29:36-0400 | AC Power | 6781.19M | 5.31 / 8.57 / 9.11 |
+| throughput.json | 2024-09-24T15:37:33-0400 | AC Power | 5802.31M | 13.70 / 9.91 / 9.24 |
+| faults.json | 2024-09-24T15:46:48-0400 | AC Power | 6560.62M | 6.12 / 6.63 / 7.71 |
+| coldstart.json | 2024-09-24T21:29:54-0400 | Battery Power | 8471.25M | 6.55 / 33.07 / 70.01 |
+| idle.json | 2024-09-24T23:04:16-0400 | Battery Power | 10868.00M | 4.99 / 5.17 / 4.02 |
 
 ![E1 cold start](experiments/figures/coldstart.svg)
 
@@ -178,7 +188,7 @@ the experiment result files exist.
 Full tables: [experiments/RESULTS.md](experiments/RESULTS.md).
 <!-- experiments:end -->
 
-What the numbers say, and what they don't:
+The runs show:
 
 - **Cold starts (E1).** Resuming a paused API costs little over a warm request. Starting a
   stopped API costs most of a second, dominated by the readiness check (orderer boundary plus a
