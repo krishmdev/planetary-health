@@ -124,6 +124,34 @@ export class ApiError extends Error {
   }
 }
 
+// Gateway reachability, shared by every request: the app shows one page-level banner when
+// requests keep failing to reach the gateway instead of an error block in every card.
+const KNOWN_503 = new Set(['STALE_PEER', 'ORDERING_QUORUM_LOST', 'ORDERING_UNAVAILABLE', 'FABRIC_UNAVAILABLE', 'PHI_UNAVAILABLE', 'WAKE_TIMEOUT', 'WAKE_FAILED', 'ACTIVATION_QUEUE_FULL']);
+
+export function isUnreachable(e: unknown): boolean {
+  return e instanceof ApiError && (e.status === 0 || ([502, 503, 504].includes(e.status) && !KNOWN_503.has(e.code)));
+}
+
+type Listener = (failures: number) => void;
+let failures = 0;
+const listeners = new Set<Listener>();
+export const reachability = {
+  subscribe(l: Listener) {
+    listeners.add(l);
+    return () => listeners.delete(l);
+  },
+  get failures() {
+    return failures;
+  },
+};
+function report(ok: boolean) {
+  const next = ok ? 0 : failures + 1;
+  if (next !== failures) {
+    failures = next;
+    for (const l of listeners) l(failures);
+  }
+}
+
 let onUnauthorized: (() => void) | null = null;
 export function setUnauthorizedHandler(fn: () => void) {
   onUnauthorized = fn;
@@ -138,6 +166,7 @@ export async function request<T>(org: OrgKey, token: string | null, method: stri
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
+    report(false);
     throw new ApiError(0, 'NETWORK', `Can't reach the ${ORGS[org].name} gateway.`, null);
   }
   const text = await res.text();
@@ -151,7 +180,10 @@ export async function request<T>(org: OrgKey, token: string | null, method: stri
     const d = (data ?? {}) as { error?: string; message?: string };
     if (res.status === 401 && token) onUnauthorized?.();
     const ra = res.headers.get('retry-after');
-    throw new ApiError(res.status, d.error ?? `HTTP_${res.status}`, d.message ?? res.statusText, ra ? Number(ra) : null);
+    const err = new ApiError(res.status, d.error ?? `HTTP_${res.status}`, d.message ?? res.statusText, ra ? Number(ra) : null);
+    report(!isUnreachable(err));
+    throw err;
   }
+  report(true);
   return data as T;
 }

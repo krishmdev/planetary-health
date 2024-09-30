@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ApiError, ORGS } from './api';
+import { useUnreachable } from './components/states';
 import { Admin } from './pages/Admin';
 import { Doctor } from './pages/Doctor';
 import { Login } from './pages/Login';
@@ -28,22 +29,33 @@ function App() {
   const { session, logout } = useSession();
   if (!session) return <Login />;
   const { user, org } = session;
+  return <Shell org={org} user={user} onLogout={() => logout()} />;
+}
+
+function Shell({ org, user, onLogout }: { org: keyof typeof ORGS; user: { displayName: string; role: string }; onLogout: () => void }) {
+  const unreachable = useUnreachable();
   return (
     <>
       <nav className="topbar" aria-label="Session">
         <div className="brand">
           <strong>Planetary Health</strong>
-          <span className="muted small">{ORGS[org].name}</span>
+          <span className="muted small full">{ORGS[org].name}</span>
+          <span className="muted small short">{ORGS[org].short}</span>
         </div>
         <div className="who">
           <span>
             {user.displayName} <span className="muted role-name">· {user.role}</span>
           </span>
-          <button type="button" className="ghost" onClick={() => logout()}>
+          <button type="button" className="ghost" onClick={onLogout}>
             Sign out
           </button>
         </div>
       </nav>
+      {unreachable && (
+        <p className="banner amber netbanner" role="status">
+          Can’t reach the {ORGS[org].name} gateway. It may be waking up; data below may be missing until it answers.
+        </p>
+      )}
       <main className="shell">{user.role === 'patient' ? <Patient /> : user.role === 'doctor' ? <Doctor /> : <Admin />}</main>
     </>
   );

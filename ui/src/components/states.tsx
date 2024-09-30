@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { ApiError, type Receipt } from '../api';
+import { useEffect, useState } from 'react';
+import { ApiError, isUnreachable, reachability, type Receipt } from '../api';
 
 export function Loading({ rows = 3, label = 'Loading' }: { rows?: number; label?: string }) {
   return (
@@ -36,6 +37,7 @@ function explain(e: ApiError): { title: string; hint: string; kind: 'error' | 'u
         : 'Both hospitals checked the policy against your certificate. You need the patient’s consent, or emergency access.',
     };
   }
+  if (isUnreachable(e)) return { kind: 'unavailable', title: 'Gateway unreachable', hint: 'The hospital API is not answering. It may be waking up, or the stack may be down.' };
   if (e.status === 503) {
     const stale = e.code === 'STALE_PEER';
     const quorum = e.code === 'ORDERING_QUORUM_LOST';
@@ -51,15 +53,38 @@ function explain(e: ApiError): { title: string; hint: string; kind: 'error' | 'u
   }
   if (e.status === 409) return { kind: 'error', title: 'Already used or changed', hint: 'This grant was used already, or the data changed while the request was in flight.' };
   if (e.status === 404) return { kind: 'error', title: 'Not found', hint: 'It may have been purged, or the ID is wrong.' };
-  if (e.status === 0) return { kind: 'unavailable', title: 'Gateway unreachable', hint: 'Is the stack running? See the README quickstart.' };
+  if (isUnreachable(e)) return { kind: 'unavailable', title: 'Gateway unreachable', hint: 'The hospital API is not answering. It may be waking up, or the stack may be down.' };
   return { kind: 'error', title: 'Something went wrong', hint: 'Try again. If it keeps happening, check the gateway logs.' };
 }
 
-export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+export function useUnreachable(): boolean {
+  const [n, setN] = useState(reachability.failures);
+  useEffect(() => {
+    const off = reachability.subscribe(setN);
+    return () => {
+      off();
+    };
+  }, []);
+  return n >= 2;
+}
+
+// Errors from background queries are announced politely (role=status); errors after something
+// the user just did use role=alert.
+export function ErrorState({ error, onRetry, afterAction = false }: { error: unknown; onRetry?: () => void; afterAction?: boolean }) {
   const e = error instanceof ApiError ? error : new ApiError(500, 'CLIENT', String((error as Error)?.message ?? error), null);
   const x = explain(e);
+  const banner = useUnreachable();
+  // Retrying won't change a policy decision or an already-used grant.
+  const retry = e.status === 403 || e.status === 409 ? undefined : onRetry;
+  if (banner && isUnreachable(e) && !afterAction) {
+    return (
+      <p className="state muted small" role="status">
+        Unavailable while the gateway is unreachable.
+      </p>
+    );
+  }
   return (
-    <div className={`state ${x.kind}`} role="alert">
+    <div className={`state ${x.kind}`} role={afterAction ? 'alert' : 'status'}>
       <strong>
         {x.title} <span className="mono xs muted">{e.status || ''} {e.code}</span>
       </strong>
@@ -67,8 +92,8 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
       {e.message && <p className="xs mono muted">{e.message}</p>}
       <div className="row">
         {e.retryAfter !== null && <span className="xs muted">Retry after {e.retryAfter}s.</span>}
-        {onRetry && (
-          <button type="button" className="ghost" onClick={onRetry}>
+        {retry && (
+          <button type="button" className="ghost" onClick={retry}>
             Try again
           </button>
         )}
