@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import type { Delivery, RecordMeta } from '../api';
+import { ApiError, type Delivery, type RecordMeta } from '../api';
 import { useSession } from '../session';
 import { Empty, ErrorState, Loading, when } from './states';
 
@@ -25,10 +25,11 @@ function PhiView({ phi }: { phi: string }) {
   );
 }
 
-function RecordRow({ r, canRead }: { r: RecordMeta; canRead: boolean }) {
+function RecordRow({ r, canRead, onEmergency }: { r: RecordMeta; canRead: boolean; onEmergency?: (pid: string) => void }) {
   const { api } = useSession();
   const [purpose, setPurpose] = useState('treatment');
   const read = useMutation({ mutationFn: () => api<Delivery>('POST', `/records/${r.recordId}/read`, { purpose }) });
+  const denied = read.error instanceof ApiError && read.error.status === 403;
   return (
     <div className="record">
       <span className="type">{r.type}</span>
@@ -44,7 +45,16 @@ function RecordRow({ r, canRead }: { r: RecordMeta; canRead: boolean }) {
         </p>
         {r.purged && <span className="tag warn">PHI purged, digest kept</span>}
         {read.isPending && <Loading rows={2} label="Requesting access" />}
-        {read.error && <ErrorState error={read.error} onRetry={() => read.mutate()} />}
+        {read.error && <ErrorState error={read.error} onRetry={() => read.mutate()} afterAction />}
+        {denied && onEmergency && (
+          <p className="small" style={{ marginTop: 8 }}>
+            In an emergency without consent,{' '}
+            <button type="button" className="link" onClick={() => onEmergency(r.patientId)}>
+              request emergency access for {r.patientId}
+            </button>
+            .
+          </p>
+        )}
         {read.data && (
           <div className="phi" aria-live="polite">
             <PhiView phi={read.data.record.phi} />
@@ -56,12 +66,12 @@ function RecordRow({ r, canRead }: { r: RecordMeta; canRead: boolean }) {
           </div>
         )}
       </div>
-      {canRead && !r.purged && !read.data && (
+      {canRead && !r.purged && !read.data && !denied && (
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <label className="sr-only" htmlFor={`p-${r.recordId}`}>
             Purpose
           </label>
-          <select id={`p-${r.recordId}`} value={purpose} onChange={(e) => setPurpose(e.target.value)} style={{ width: 'auto' }}>
+          <select id={`p-${r.recordId}`} className="compact" value={purpose} onChange={(e) => setPurpose(e.target.value)}>
             <option value="treatment">Treatment</option>
             <option value="second opinion">Second opinion</option>
             <option value="personal copy">Personal copy</option>
@@ -75,7 +85,7 @@ function RecordRow({ r, canRead }: { r: RecordMeta; canRead: boolean }) {
   );
 }
 
-export function Records({ patientId, canRead = true }: { patientId: string; canRead?: boolean }) {
+export function Records({ patientId, canRead = true, onEmergency }: { patientId: string; canRead?: boolean; onEmergency?: (pid: string) => void }) {
   const { api } = useSession();
   const q = useQuery({ queryKey: ['records', patientId], queryFn: () => api<RecordMeta[]>('GET', `/patients/${patientId}/records`) });
   if (q.isPending) return <Loading />;
@@ -84,7 +94,7 @@ export function Records({ patientId, canRead = true }: { patientId: string; canR
   return (
     <div className="records">
       {q.data.map((r) => (
-        <RecordRow key={r.recordId} r={r} canRead={canRead} />
+        <RecordRow key={r.recordId} r={r} canRead={canRead} onEmergency={onEmergency} />
       ))}
     </div>
   );

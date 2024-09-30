@@ -46,7 +46,7 @@ function NewRecord({ patientId }: { patientId: string }) {
           {m.isPending ? 'Endorsing at both hospitals…' : 'Add record'}
         </button>
       </div>
-      {m.error && <ErrorState error={m.error} />}
+      {m.error && <ErrorState error={m.error} afterAction />}
       {m.data && <TxReceipt receipt={m.data.receipt} label={`record ${m.data.record.recordId}`} />}
     </form>
   );
@@ -58,7 +58,7 @@ export function Doctor() {
   const consents = useQuery({ queryKey: ['consents'], queryFn: () => api<Consent[]>('GET', '/consents') });
   const [patient, setPatient] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<Set<string>>(new Set());
-  const [modal, setModal] = useState(false);
+  const [modal, setModal] = useState<{ patient: string } | null>(null);
 
   const live = (consents.data ?? []).filter((c) => c.status === 'active' && new Date(c.expiresAt) > new Date());
   const patients = [...new Set([...live.map((c) => c.patientId), ...emergency])];
@@ -73,7 +73,7 @@ export function Doctor() {
           </p>
           <h1>Patients who shared with you</h1>
         </div>
-        <button type="button" className="danger" onClick={() => setModal(true)}>
+        <button type="button" className="danger" onClick={() => setModal({ patient: '' })}>
           Emergency access…
         </button>
       </div>
@@ -84,7 +84,11 @@ export function Doctor() {
               <h2>{selected ? `Records for ${selected}` : 'Records'}</h2>
               {selected && emergency.has(selected) && <span className="tag bad">emergency access · 60 min</span>}
             </header>
-            {selected ? <Records patientId={selected} /> : <Empty title="Choose a patient">Patients appear once they grant you consent.</Empty>}
+            {selected ? (
+              <Records patientId={selected} onEmergency={(pid) => setModal({ patient: pid })} />
+            ) : (
+              <Empty title="Choose a patient">Patients appear once they grant you consent.</Empty>
+            )}
           </section>
           {selected && (
             <section className="card reveal">
@@ -98,7 +102,7 @@ export function Doctor() {
             </section>
           )}
         </div>
-        <section className="card reveal">
+        <section className="card reveal picker">
           <header>
             <h2>Consents to you</h2>
           </header>
@@ -133,11 +137,11 @@ export function Doctor() {
       </div>
       {modal && (
         <BreakGlassModal
-          onClose={() => setModal(false)}
+          initialPatient={modal.patient}
+          onClose={() => setModal(null)}
           onGranted={(pid) => {
             setEmergency((s) => new Set(s).add(pid));
             setPatient(pid);
-            setTimeout(() => setModal(false), 1600);
           }}
         />
       )}
