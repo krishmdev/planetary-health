@@ -74,22 +74,24 @@ export function Login() {
         )}
         <div className="stack" style={{ gap: 12 }}>
           <h2>Sign in</h2>
-          <div className="tabs" role="tablist" aria-label="Hospital">
+          <fieldset className="tabs">
+            <legend className="sr-only">Hospital</legend>
             {(Object.keys(ORGS) as OrgKey[]).map((k) => (
-              <button
-                key={k}
-                type="button"
-                role="tab"
-                aria-selected={org === k}
-                onClick={() => {
-                  setOrg(k);
-                  pick(PEOPLE[k][0]!.username);
-                }}
-              >
+              <label key={k} className={org === k ? 'on' : ''}>
+                <input
+                  type="radio"
+                  name="hospital"
+                  className="sr-only"
+                  checked={org === k}
+                  onChange={() => {
+                    setOrg(k);
+                    pick(PEOPLE[k][0]!.username);
+                  }}
+                />
                 {ORGS[k].name}
-              </button>
+              </label>
             ))}
-          </div>
+          </fieldset>
         </div>
         <div className="people" role="group" aria-label="Demo accounts">
           {PEOPLE[org].map((p) => (

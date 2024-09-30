@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useRef } from 'react';
 import type { NetworkStatus } from '../api';
 import { useSession } from '../session';
 import { ErrorState, Loading } from './states';
@@ -8,6 +9,8 @@ import { ErrorState, Loading } from './states';
 export function NetworkPanel() {
   const { api } = useSession();
   const q = useQuery({ queryKey: ['network'], queryFn: () => api<NetworkStatus>('GET', '/network/status'), refetchInterval: 4000 });
+  const lastSeen = useRef<Record<string, number>>({});
+  for (const p of q.data?.peers ?? []) if (p.up) lastSeen.current[p.name] = Date.parse(q.data!.checkedAt);
   if (q.isPending) return <Loading rows={2} label="Checking the network" />;
   if (q.error) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
   const s = q.data;
@@ -21,7 +24,7 @@ export function NetworkPanel() {
             <div key={o.name} role="listitem" className={`node ${o.up ? 'up' : 'down'} ${leader ? 'leader' : ''}`} aria-label={`${o.name} ${o.up ? 'up' : 'down'}${leader ? ', leader' : ''}`}>
               {leader && <span className="crown">leader</span>}
               <span className="light" aria-hidden />
-              <strong className="small">orderer{id === 1 ? '' : id}</strong>
+              <strong className="small">orderer{id}</strong>
               <span className="xs muted">{o.up ? `${o.ms} ms` : o.status}</span>
             </div>
           );
@@ -48,14 +51,14 @@ export function NetworkPanel() {
           {s.quorum.live} of {s.quorum.total} orderers up; {s.quorum.needed} are needed to commit. {s.quorum.live - s.quorum.needed === 1 ? 'One more can fail.' : s.quorum.live === s.quorum.needed ? 'No further failures tolerated.' : ''}
         </p>
       ) : (
-        <p className="banner red">
+        <p className="banner red" role="alert">
           Only {s.quorum.live} orderers up; {s.quorum.needed} are needed. Writes return 503 until one comes back.
         </p>
       )}
       <div className="row">
         {s.peers.map((p) => (
           <span key={p.name} className={`tag ${p.up ? 'ok' : 'bad'}`}>
-            <span className="dot" /> {p.name} {p.height !== undefined ? `· height ${p.height}` : ''}
+            <span className="dot" /> {p.name} {p.up ? (p.height !== undefined ? `· height ${p.height}` : '') : `· down, last seen ${lastSeen.current[p.name] ? new Date(lastSeen.current[p.name]!).toLocaleTimeString() : 'not this session'}`}
           </span>
         ))}
       </div>

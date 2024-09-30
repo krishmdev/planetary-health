@@ -10,7 +10,7 @@ fs.mkdirSync(out, { recursive: true });
 
 async function signIn(page, org, user) {
   await page.goto(base);
-  if (org === 'org2') await page.getByRole('tab', { name: 'Riverside Clinic' }).click();
+  if (org === 'org2') await page.getByRole('radio', { name: 'Riverside Clinic' }).check({ force: true });
   await page.getByRole('button', { name: new RegExp(user.label) }).click();
   await page.getByRole('button', { name: /^Sign in to/ }).click();
   await page.waitForSelector('.page-head', { timeout: 120_000 });
