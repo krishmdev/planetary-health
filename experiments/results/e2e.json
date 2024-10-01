@@ -1,5 +1,5 @@
 {
-  "ran_at": "2024-09-24T19:27:20.838Z",
+  "ran_at": "2024-09-25T14:52:08.473Z",
   "passed": 27,
   "failed": 0,
   "steps": [
@@ -21,7 +21,7 @@
         "error": "UNAUTHENTICATED",
         "message": "invalid or expired token"
       },
-      "ms": 2
+      "ms": 3
     },
     {
       "name": "login: expired token rejected (401)",
@@ -43,7 +43,7 @@
         "enrollmentId": "alice",
         "certId": "eDUwOTo6Q049YWxpY2UsT1U9Y2xpZW50OjpDTj1jYS5vcmcxLmV4YW1wbGUuY29tLE89b3JnMS5leGFtcGxlLmNvbSxMPUR1cmhhbSxTVD1Ob3J0aCBDYXJvbGluYSxDPVVT"
       },
-      "ms": 8
+      "ms": 21
     },
     {
       "name": "PHI: doctor with consent gets a grant and a delivery",
@@ -54,14 +54,14 @@
           "grantBlock": "17",
           "ordererNewest": "17",
           "waitedForBlock": "17",
-          "boundaryMs": 22,
-          "peerWaitMs": 5,
-          "waitMs": 27,
+          "boundaryMs": 43,
+          "peerWaitMs": 22,
+          "waitMs": 65,
           "enforced": true
         },
         "receipt": "recorded"
       },
-      "ms": 217
+      "ms": 581
     },
     {
       "name": "PHI: replaying the same accessId returns 409",
@@ -69,7 +69,7 @@
       "detail": {
         "status": 409,
         "error": "GRANT_ALREADY_USED",
-        "message": "access grant A-a2e93a2191f420b6 was already used"
+        "message": "access grant A-3966743116825b76 was already used"
       },
       "ms": 2
     },
@@ -79,9 +79,18 @@
       "detail": {
         "status": 403,
         "error": "ACCESS_DENIED",
-        "message": "access grant A-e898af14695b5044 was issued to another user"
+        "message": "access grant A-4a00978aae735eac was issued to another user",
+        "freshness": {
+          "grantBlock": "19",
+          "ordererNewest": "19",
+          "waitedForBlock": "19",
+          "boundaryMs": 5,
+          "peerWaitMs": 5,
+          "waitMs": 10,
+          "enforced": true
+        }
       },
-      "ms": 78
+      "ms": 123
     },
     {
       "name": "subject substitution: Alice asking for Ben's records is denied (403)",
@@ -91,7 +100,7 @@
         "error": "ACCESS_DENIED",
         "message": "patients can only access their own records"
       },
-      "ms": 7
+      "ms": 15
     },
     {
       "name": "role escalation: patient cannot create a record (403)",
@@ -101,7 +110,7 @@
         "error": "ACCESS_DENIED",
         "message": "role patient cannot call this transaction"
       },
-      "ms": 15
+      "ms": 44
     },
     {
       "name": "role escalation: patient cannot use break-glass (403)",
@@ -111,7 +120,7 @@
         "error": "ACCESS_DENIED",
         "message": "role patient cannot call this transaction"
       },
-      "ms": 9
+      "ms": 16
     },
     {
       "name": "minimum necessary: admin cannot read PHI (403)",
@@ -121,7 +130,7 @@
         "error": "ACCESS_DENIED",
         "message": "administrators cannot read or write PHI (minimum necessary)"
       },
-      "ms": 11
+      "ms": 17
     },
     {
       "name": "cross-org: Org2 doctor without consent is denied (403)",
@@ -131,25 +140,25 @@
         "error": "ACCESS_DENIED",
         "message": "no active consent or emergency access for this record"
       },
-      "ms": 58
+      "ms": 101
     },
     {
       "name": "cross-org: with consent, Org2 doctor reads through the Org2 gateway",
       "ok": true,
       "detail": {
         "status": 200,
-        "basis": "consent:C-3b28cb89da8924c2",
+        "basis": "consent:C-4f73ad345ea97915",
         "freshness": {
           "grantBlock": "21",
           "ordererNewest": "21",
           "waitedForBlock": "21",
-          "boundaryMs": 17,
-          "peerWaitMs": 6,
-          "waitMs": 22,
+          "boundaryMs": 32,
+          "peerWaitMs": 11,
+          "waitMs": 43,
           "enforced": true
         }
       },
-      "ms": 218
+      "ms": 411
     },
     {
       "name": "revoke after grant: delivery denied once consent is revoked",
@@ -159,31 +168,40 @@
         "revokedInBlock": "24",
         "body": {
           "error": "ACCESS_DENIED",
-          "message": "no active consent or emergency access for this record"
+          "message": "no active consent or emergency access for this record",
+          "freshness": {
+            "grantBlock": "23",
+            "ordererNewest": "24",
+            "waitedForBlock": "24",
+            "boundaryMs": 4,
+            "peerWaitMs": 5,
+            "waitMs": 9,
+            "enforced": true
+          }
         }
       },
-      "ms": 131
+      "ms": 212
     },
     {
       "name": "MVCC: a grant endorsed before a revocation but ordered after it is invalidated (409), then denied (403)",
       "ok": true,
       "detail": {
-        "endorsedTx": "410283aa2a690e4977ff516999900ccc236c620657c35bd80b50a8f084344a17",
+        "endorsedTx": "92c4a81fd1c6b8b22d5ca478f9504486d89b6040bbce38e9d7bb26965cf30c51",
         "revokedInBlock": "26",
         "commitStatus": "PHANTOM_READ_CONFLICT",
         "mapped": 409,
         "retry": 403
       },
-      "ms": 270
+      "ms": 395
     },
     {
       "name": "break-glass: doctor without consent gets 60-minute emergency access",
       "ok": true,
       "detail": {
-        "basis": "breakglass:G-58e329916a60d685",
-        "expiresAt": "2024-09-24T20:26:56.741Z"
+        "basis": "breakglass:G-aefd4d092ce1e0e8",
+        "expiresAt": "2024-09-25T15:51:25.351Z"
       },
-      "ms": 229
+      "ms": 534
     },
     {
       "name": "break-glass: grant lands in the patient org's review queue, not the other org's",
@@ -191,7 +209,7 @@
       "detail": {
         "org1Queue": 1
       },
-      "ms": 12
+      "ms": 30
     },
     {
       "name": "break-glass: \"unjustified\" review ends access immediately",
@@ -200,7 +218,7 @@
         "review": 200,
         "read": 403
       },
-      "ms": 54
+      "ms": 112
     },
     {
       "name": "audit: patient access log lists grants with actor and basis",
@@ -208,7 +226,7 @@
       "detail": {
         "grants": 4
       },
-      "ms": 5
+      "ms": 10
     },
     {
       "name": "audit: reconcile finds no delivery without an on-ledger receipt",
@@ -218,23 +236,23 @@
         "localDeliveries": 1,
         "missing": []
       },
-      "ms": 1516
+      "ms": 1608
     },
     {
       "name": "integrity: SHA-256 matches ledger and private data hash",
       "ok": true,
       "detail": {
         "good": {
-          "recordId": "R-7ae71b4e99caab64",
-          "onLedger": "63c109e3bb744d0a42ee010512c563121243ba3ec63a4bbb31cfc8c3b2dbd20b",
-          "supplied": "63c109e3bb744d0a42ee010512c563121243ba3ec63a4bbb31cfc8c3b2dbd20b",
-          "privateHash": "63c109e3bb744d0a42ee010512c563121243ba3ec63a4bbb31cfc8c3b2dbd20b",
-          "dataHash": "63c109e3bb744d0a42ee010512c563121243ba3ec63a4bbb31cfc8c3b2dbd20b",
+          "recordId": "R-b6b5089d38f7b123",
+          "onLedger": "9f9ac177ceeaaa1a422d5e512e44a97186ba883d343d3f0a8c6204a8c9b83c73",
+          "supplied": "9f9ac177ceeaaa1a422d5e512e44a97186ba883d343d3f0a8c6204a8c9b83c73",
+          "privateHash": "9f9ac177ceeaaa1a422d5e512e44a97186ba883d343d3f0a8c6204a8c9b83c73",
+          "dataHash": "9f9ac177ceeaaa1a422d5e512e44a97186ba883d343d3f0a8c6204a8c9b83c73",
           "match": true
         },
         "bad": "supplied digest does not match the ledger digest"
       },
-      "ms": 16
+      "ms": 42
     },
     {
       "name": "admin: register and enroll a new doctor through the CA",
@@ -243,7 +261,7 @@
         "status": 200,
         "registeredIn": "33"
       },
-      "ms": 551
+      "ms": 1110
     },
     {
       "name": "revocation layer 1: deactivated provider denied at the next block",
@@ -251,11 +269,11 @@
       "detail": {
         "denied": {
           "error": "ACCESS_DENIED",
-          "message": "D-drtemp18573 is deactivated"
+          "message": "D-drtemp87685 is deactivated"
         },
         "reactivated": 200
       },
-      "ms": 167
+      "ms": 630
     },
     {
       "name": "revocation layer 2: CRL in Org1MSP makes the peers reject the certificate",
@@ -265,7 +283,7 @@
         "error": "CERT_REJECTED",
         "message": "the peer rejected this user's certificate"
       },
-      "ms": 3670
+      "ms": 5219
     },
     {
       "name": "freshness: lagging replica waits for the orderer boundary, then denies the revoked read",
@@ -273,12 +291,21 @@
       "detail": {
         "status": 403,
         "lagging": true,
-        "heightAtRead": 44,
-        "revokeBlock": "51",
-        "replicaCatchUpMs": 59,
+        "heightAtUnpause": 45,
+        "revokeBlock": "55",
+        "replicaCatchUpMs": 891,
+        "freshness": {
+          "grantBlock": "42",
+          "ordererNewest": "55",
+          "waitedForBlock": "55",
+          "boundaryMs": 79,
+          "peerWaitMs": 768,
+          "waitMs": 847,
+          "enforced": true
+        },
         "error": "ACCESS_DENIED"
       },
-      "ms": 1099
+      "ms": 11836
     },
     {
       "name": "freshness: replica kept paused past the timeout returns 503, never stale PHI",
@@ -286,9 +313,9 @@
       "detail": {
         "status": 503,
         "error": "STALE_PEER",
-        "message": "peer did not commit block 62 within 15000 ms; refusing to serve possibly stale data"
+        "message": "peer did not commit block 69 within 15000 ms; refusing to serve possibly stale data"
       },
-      "ms": 15788
+      "ms": 18465
     },
     {
       "name": "control (FRESHNESS=off): the lagging replica serves the revoked read",
@@ -296,20 +323,20 @@
       "detail": {
         "status": 200,
         "lagging": true,
-        "heightAtRead": 67,
-        "revokeBlock": "73",
-        "replicaCatchUpMs": 58,
+        "heightAtUnpause": 74,
+        "revokeBlock": "82",
+        "replicaCatchUpMs": 380,
         "freshness": {
-          "grantBlock": "65",
-          "ordererNewest": "73",
-          "waitedForBlock": "73",
-          "boundaryMs": 23,
+          "grantBlock": "72",
+          "ordererNewest": "82",
+          "waitedForBlock": "82",
+          "boundaryMs": 114,
           "peerWaitMs": 0,
-          "waitMs": 23,
+          "waitMs": 114,
           "enforced": false
         }
       },
-      "ms": 858
+      "ms": 2764
     }
   ]
 }
