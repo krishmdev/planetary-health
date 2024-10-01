@@ -1,1252 +1,1863 @@
 {
   "experiment": "faults",
-  "description": "Ping transactions from 8 closed-loop clients while orderers are stopped and restarted.",
+  "description": "Ping from 8 closed-loop workers (10 s commit deadline) plus an independent probe sending one Ping per second (8 s commit deadline) while orderers are stopped and restarted. Recovery times come from the probe.",
   "results": [
     {
       "channel": "ehrchannel",
       "consensus": "SmartBFT",
       "events": [
         {
-          "t": 30.495,
+          "t": 30.457,
           "what": "stop orderer.example.com (follower)"
         },
         {
-          "t": 60.262,
+          "t": 60.394,
           "what": "start orderer.example.com"
         },
         {
-          "t": 90.637,
-          "what": "stop orderer2.example.com (leader)"
+          "t": 90.65,
+          "what": "stop orderer4.example.com (leader)"
         },
         {
-          "t": 180.542,
-          "what": "stop orderer.example.com (second failure: 2 of 4 down)"
+          "t": 180.432,
+          "what": "stop orderer2.example.com (second failure: 2 of 4 down)"
         },
         {
-          "t": 210.289,
+          "t": 210.282,
+          "what": "start orderer4.example.com"
+        },
+        {
+          "t": 210.54,
           "what": "start orderer2.example.com"
-        },
-        {
-          "t": 210.514,
-          "what": "start orderer.example.com"
         }
       ],
-      "leaderBefore": "orderer2.example.com",
-      "leaderAfter": "orderer3.example.com",
+      "leaderBefore": "orderer4.example.com",
+      "leaderAfter": "orderer.example.com",
       "phases": {
-        "baselineTps": 114.5,
-        "followerDownTps": 125.5,
-        "afterLeaderStopTps": 92.8,
+        "baselineTps": 126,
+        "followerDownTps": 125.4,
+        "afterLeaderStopTps": 92.6,
         "twoDownCommits": 0,
-        "recoveredTps": 0
+        "recoveredTps": 100.1
       },
-      "leaderStopToNextCommitS": 21.7,
-      "restartToNextCommitS": 61.8,
-      "twoDownErrors": {
-        "count": 0,
-        "quorumMessageSeen": false,
-        "sample": []
+      "leaderStopToNextCommitS": 21.6,
+      "restartToNextCommitS": 31.1,
+      "twoDownProbes": {
+        "sent": 29,
+        "committed": 0,
+        "errorKinds": {
+          "quorum (insufficient number of orderers)": 29
+        },
+        "quorumMessageSeen": true,
+        "sample": [
+          "14 UNAVAILABLE: insufficient number of orderers could successfully process transaction to satisfy quorum requirement | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup orderer2.example.com on 127.0.0.11:53: no such host\" | rpc error: cod",
+          "14 UNAVAILABLE: insufficient number of orderers could successfully process transaction to satisfy quorum requirement | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup orderer4.example.com on 127.0.0.11:53: no such host\" | rpc error: cod"
+        ]
+      },
+      "probes": {
+        "sent": 300,
+        "committed": 233
       },
       "perSecond": [
         {
           "t": 0,
-          "commits": 75,
-          "errors": 0
+          "commits": 72,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 1,
-          "commits": 101,
-          "errors": 0
+          "commits": 112,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 2,
-          "commits": 118,
-          "errors": 0
+          "commits": 121,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 3,
-          "commits": 113,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 4,
-          "commits": 99,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 5,
-          "commits": 116,
-          "errors": 0
+          "commits": 118,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 6,
-          "commits": 133,
-          "errors": 0
+          "commits": 115,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 7,
-          "commits": 125,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 8,
-          "commits": 131,
-          "errors": 0
+          "commits": 95,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 9,
-          "commits": 117,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 10,
-          "commits": 120,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 11,
           "commits": 136,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 12,
-          "commits": 115,
-          "errors": 0
+          "commits": 122,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 13,
-          "commits": 72,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 14,
-          "commits": 117,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 15,
-          "commits": 104,
-          "errors": 0
+          "commits": 129,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 16,
-          "commits": 74,
-          "errors": 0
+          "commits": 131,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 17,
-          "commits": 103,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 18,
-          "commits": 121,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 19,
-          "commits": 107,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 20,
-          "commits": 112,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 21,
-          "commits": 119,
-          "errors": 0
+          "commits": 126,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 22,
-          "commits": 109,
-          "errors": 0
+          "commits": 112,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 23,
-          "commits": 92,
-          "errors": 0
+          "commits": 133,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 24,
-          "commits": 106,
-          "errors": 0
+          "commits": 133,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 25,
-          "commits": 114,
-          "errors": 0
+          "commits": 131,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 26,
-          "commits": 120,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 27,
-          "commits": 136,
-          "errors": 0
+          "commits": 132,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 28,
-          "commits": 136,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 29,
-          "commits": 128,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 30,
-          "commits": 112,
-          "errors": 0
+          "commits": 101,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 31,
-          "commits": 116,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 32,
-          "commits": 116,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 33,
-          "commits": 113,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 34,
-          "commits": 136,
-          "errors": 0
+          "commits": 120,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 35,
-          "commits": 128,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 36,
-          "commits": 128,
-          "errors": 0
+          "commits": 125,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 37,
-          "commits": 112,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 38,
-          "commits": 128,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 39,
-          "commits": 128,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 40,
-          "commits": 136,
-          "errors": 0
+          "commits": 127,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 41,
-          "commits": 128,
-          "errors": 0
+          "commits": 111,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 42,
-          "commits": 136,
-          "errors": 0
+          "commits": 115,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 43,
-          "commits": 128,
-          "errors": 0
+          "commits": 95,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 44,
-          "commits": 136,
-          "errors": 0
+          "commits": 90,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 45,
           "commits": 120,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 46,
-          "commits": 128,
-          "errors": 0
+          "commits": 125,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 47,
-          "commits": 124,
-          "errors": 0
+          "commits": 135,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 48,
-          "commits": 126,
-          "errors": 0
+          "commits": 121,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 49,
-          "commits": 118,
-          "errors": 0
+          "commits": 105,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 50,
-          "commits": 128,
-          "errors": 0
+          "commits": 135,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 51,
-          "commits": 96,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 52,
-          "commits": 103,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 53,
-          "commits": 118,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 54,
-          "commits": 136,
-          "errors": 0
+          "commits": 132,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 55,
-          "commits": 128,
-          "errors": 0
+          "commits": 132,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 56,
           "commits": 136,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 57,
           "commits": 128,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 58,
-          "commits": 136,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 59,
-          "commits": 136,
-          "errors": 0
+          "commits": 132,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 60,
-          "commits": 95,
-          "errors": 0
+          "commits": 103,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 61,
-          "commits": 97,
-          "errors": 0
+          "commits": 114,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 62,
-          "commits": 111,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 63,
-          "commits": 128,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 64,
-          "commits": 136,
-          "errors": 0
+          "commits": 125,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 65,
-          "commits": 131,
-          "errors": 0
+          "commits": 130,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 66,
-          "commits": 133,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 67,
-          "commits": 136,
-          "errors": 0
+          "commits": 122,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 68,
-          "commits": 128,
-          "errors": 0
+          "commits": 106,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 69,
-          "commits": 117,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 70,
-          "commits": 118,
-          "errors": 0
+          "commits": 90,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 71,
-          "commits": 120,
-          "errors": 0
+          "commits": 110,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 72,
-          "commits": 112,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 73,
-          "commits": 128,
-          "errors": 0
+          "commits": 125,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 74,
-          "commits": 128,
-          "errors": 0
+          "commits": 126,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 75,
           "commits": 136,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 76,
-          "commits": 120,
-          "errors": 0
+          "commits": 112,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 77,
-          "commits": 85,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 78,
-          "commits": 94,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 79,
-          "commits": 100,
-          "errors": 0
+          "commits": 135,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 80,
-          "commits": 127,
-          "errors": 0
+          "commits": 129,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 81,
-          "commits": 121,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 82,
-          "commits": 136,
-          "errors": 0
+          "commits": 109,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 83,
-          "commits": 119,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 84,
-          "commits": 125,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 85,
           "commits": 128,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 86,
           "commits": 136,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 87,
-          "commits": 128,
-          "errors": 0
+          "commits": 120,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 88,
           "commits": 115,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 89,
-          "commits": 103,
-          "errors": 0
+          "commits": 120,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 90,
-          "commits": 28,
-          "errors": 0
+          "commits": 11,
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 91,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 92,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 93,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 94,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 95,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 96,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 97,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 98,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 99,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 100,
           "commits": 0,
-          "errors": 0
+          "errors": 8,
+          "probeOk": false
         },
         {
           "t": 101,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 102,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 103,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 104,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 105,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 106,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 107,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 108,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 109,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 110,
           "commits": 0,
-          "errors": 0
+          "errors": 8,
+          "probeOk": true
         },
         {
           "t": 111,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 112,
-          "commits": 67,
-          "errors": 0
+          "commits": 74,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 113,
-          "commits": 120,
-          "errors": 0
+          "commits": 117,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 114,
-          "commits": 128,
-          "errors": 0
+          "commits": 123,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 115,
           "commits": 136,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 116,
           "commits": 128,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 117,
-          "commits": 136,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 118,
-          "commits": 128,
-          "errors": 0
+          "commits": 130,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 119,
-          "commits": 136,
-          "errors": 0
+          "commits": 134,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 120,
           "commits": 120,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 121,
           "commits": 128,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 122,
-          "commits": 128,
-          "errors": 0
+          "commits": 116,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 123,
-          "commits": 126,
-          "errors": 0
+          "commits": 123,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 124,
-          "commits": 128,
-          "errors": 0
+          "commits": 105,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 125,
-          "commits": 136,
-          "errors": 0
+          "commits": 131,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 126,
-          "commits": 128,
-          "errors": 0
+          "commits": 123,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 127,
           "commits": 136,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 128,
-          "commits": 136,
-          "errors": 0
+          "commits": 117,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 129,
-          "commits": 128,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 130,
-          "commits": 136,
-          "errors": 0
+          "commits": 116,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 131,
-          "commits": 132,
-          "errors": 0
+          "commits": 131,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 132,
-          "commits": 100,
-          "errors": 0
+          "commits": 123,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 133,
-          "commits": 128,
-          "errors": 0
+          "commits": 98,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 134,
-          "commits": 120,
-          "errors": 0
+          "commits": 114,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 135,
           "commits": 136,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 136,
-          "commits": 128,
-          "errors": 0
+          "commits": 120,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 137,
-          "commits": 128,
-          "errors": 0
+          "commits": 127,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 138,
-          "commits": 128,
-          "errors": 0
+          "commits": 131,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 139,
-          "commits": 128,
-          "errors": 0
+          "commits": 133,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 140,
-          "commits": 136,
-          "errors": 0
+          "commits": 131,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 141,
-          "commits": 128,
-          "errors": 0
+          "commits": 133,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 142,
-          "commits": 136,
-          "errors": 0
+          "commits": 132,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 143,
           "commits": 128,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 144,
           "commits": 128,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 145,
-          "commits": 128,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 146,
-          "commits": 127,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 147,
-          "commits": 105,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 148,
-          "commits": 105,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 149,
-          "commits": 110,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 150,
-          "commits": 109,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 151,
-          "commits": 98,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 152,
-          "commits": 75,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 153,
-          "commits": 85,
-          "errors": 0
+          "commits": 120,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 154,
-          "commits": 112,
-          "errors": 0
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 155,
-          "commits": 113,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 156,
           "commits": 128,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 157,
-          "commits": 72,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 158,
-          "commits": 120,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 159,
           "commits": 128,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 160,
-          "commits": 128,
-          "errors": 0
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 161,
-          "commits": 136,
-          "errors": 0
+          "commits": 102,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 162,
-          "commits": 128,
-          "errors": 0
+          "commits": 114,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 163,
-          "commits": 120,
-          "errors": 0
+          "commits": 89,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 164,
-          "commits": 122,
-          "errors": 0
+          "commits": 89,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 165,
-          "commits": 129,
-          "errors": 0
+          "commits": 109,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 166,
-          "commits": 99,
-          "errors": 0
+          "commits": 110,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 167,
-          "commits": 119,
-          "errors": 0
+          "commits": 127,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 168,
-          "commits": 128,
-          "errors": 0
+          "commits": 91,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 169,
-          "commits": 128,
-          "errors": 0
+          "commits": 120,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 170,
-          "commits": 120,
-          "errors": 0
+          "commits": 123,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 171,
-          "commits": 129,
-          "errors": 0
+          "commits": 112,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 172,
-          "commits": 126,
-          "errors": 0
+          "commits": 121,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 173,
-          "commits": 128,
-          "errors": 0
+          "commits": 97,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 174,
-          "commits": 120,
-          "errors": 0
+          "commits": 116,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 175,
-          "commits": 121,
-          "errors": 0
+          "commits": 120,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 176,
           "commits": 128,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 177,
-          "commits": 133,
-          "errors": 0
+          "commits": 122,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 178,
-          "commits": 118,
-          "errors": 0
+          "commits": 107,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 179,
-          "commits": 121,
-          "errors": 0
+          "commits": 119,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 180,
           "commits": 15,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 181,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 182,
           "commits": 0,
-          "errors": 0
+          "errors": 25,
+          "probeOk": false
         },
         {
           "t": 183,
           "commits": 0,
-          "errors": 0
+          "errors": 31,
+          "probeOk": false
         },
         {
           "t": 184,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 185,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 186,
           "commits": 0,
-          "errors": 0
+          "errors": 27,
+          "probeOk": false
         },
         {
           "t": 187,
           "commits": 0,
-          "errors": 0
+          "errors": 30,
+          "probeOk": false
         },
         {
           "t": 188,
           "commits": 0,
-          "errors": 0
+          "errors": 31,
+          "probeOk": false
         },
         {
           "t": 189,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 190,
           "commits": 0,
-          "errors": 0
+          "errors": 27,
+          "probeOk": false
         },
         {
           "t": 191,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 192,
           "commits": 0,
-          "errors": 0
+          "errors": 29,
+          "probeOk": false
         },
         {
           "t": 193,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 194,
           "commits": 0,
-          "errors": 0
+          "errors": 27,
+          "probeOk": false
         },
         {
           "t": 195,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 196,
           "commits": 0,
-          "errors": 0
+          "errors": 29,
+          "probeOk": false
         },
         {
           "t": 197,
           "commits": 0,
-          "errors": 0
+          "errors": 27,
+          "probeOk": false
         },
         {
           "t": 198,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 199,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 200,
           "commits": 0,
-          "errors": 0
+          "errors": 29,
+          "probeOk": false
         },
         {
           "t": 201,
           "commits": 0,
-          "errors": 0
+          "errors": 27,
+          "probeOk": false
         },
         {
           "t": 202,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 203,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 204,
           "commits": 0,
-          "errors": 0
+          "errors": 29,
+          "probeOk": false
         },
         {
           "t": 205,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 206,
           "commits": 0,
-          "errors": 0
+          "errors": 27,
+          "probeOk": false
         },
         {
           "t": 207,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 208,
           "commits": 0,
-          "errors": 0
+          "errors": 29,
+          "probeOk": false
         },
         {
           "t": 209,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 210,
           "commits": 0,
-          "errors": 0
+          "errors": 27,
+          "probeOk": false
         },
         {
           "t": 211,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 212,
           "commits": 0,
-          "errors": 0
+          "errors": 29,
+          "probeOk": false
         },
         {
           "t": 213,
           "commits": 0,
-          "errors": 0
+          "errors": 27,
+          "probeOk": false
         },
         {
           "t": 214,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 215,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 216,
           "commits": 0,
-          "errors": 0
+          "errors": 29,
+          "probeOk": false
         },
         {
           "t": 217,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 218,
           "commits": 0,
-          "errors": 0
+          "errors": 27,
+          "probeOk": false
         },
         {
           "t": 219,
           "commits": 0,
-          "errors": 0
+          "errors": 9,
+          "probeOk": false
         },
         {
           "t": 220,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 221,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 222,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 223,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 224,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 225,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 226,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 227,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 228,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 229,
           "commits": 0,
-          "errors": 0
+          "errors": 8,
+          "probeOk": false
         },
         {
           "t": 230,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 231,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 232,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 233,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 234,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 235,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 236,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 237,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 238,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 239,
           "commits": 0,
-          "errors": 0
+          "errors": 8,
+          "probeOk": true
+        },
+        {
+          "t": 240,
+          "commits": 0,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 241,
+          "commits": 43,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 242,
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 243,
+          "commits": 54,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 244,
+          "commits": 2,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 245,
+          "commits": 0,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 246,
+          "commits": 0,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 247,
+          "commits": 42,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 248,
+          "commits": 83,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 249,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 250,
+          "commits": 106,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 251,
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 252,
+          "commits": 125,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 253,
+          "commits": 113,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 254,
+          "commits": 120,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 255,
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 256,
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 257,
+          "commits": 131,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 258,
+          "commits": 133,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 259,
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 260,
+          "commits": 136,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 261,
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 262,
+          "commits": 117,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 263,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 264,
+          "commits": 59,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 265,
+          "commits": 82,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 266,
+          "commits": 120,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 267,
+          "commits": 120,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 268,
+          "commits": 124,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 269,
+          "commits": 116,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 270,
+          "commits": 115,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 271,
+          "commits": 114,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 272,
+          "commits": 105,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 273,
+          "commits": 112,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 274,
+          "commits": 102,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 275,
+          "commits": 97,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 276,
+          "commits": 91,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 277,
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 278,
+          "commits": 124,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 279,
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 280,
+          "commits": 125,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 281,
+          "commits": 62,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 282,
+          "commits": 57,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 283,
+          "commits": 75,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 284,
+          "commits": 121,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 285,
+          "commits": 112,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 286,
+          "commits": 98,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 287,
+          "commits": 106,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 288,
+          "commits": 103,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 289,
+          "commits": 86,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 290,
+          "commits": 123,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 291,
+          "commits": 119,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 292,
+          "commits": 128,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 293,
+          "commits": 120,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 294,
+          "commits": 117,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 295,
+          "commits": 120,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 296,
+          "commits": 108,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 297,
+          "commits": 107,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 298,
+          "commits": 90,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 299,
+          "commits": 126,
+          "errors": 0,
+          "probeOk": true
         }
       ]
     },
@@ -1255,1252 +1866,1864 @@
       "consensus": "etcdraft",
       "events": [
         {
-          "t": 30.412,
+          "t": 30.76,
           "what": "stop orderer.example.com (follower)"
         },
         {
-          "t": 60.395,
+          "t": 60.303,
           "what": "start orderer.example.com"
         },
         {
-          "t": 90.525,
-          "what": "stop orderer4.example.com (leader)"
+          "t": 90.494,
+          "what": "stop orderer3.example.com (leader)"
         },
         {
-          "t": 180.471,
+          "t": 180.467,
           "what": "stop orderer.example.com (second failure: 2 of 4 down)"
         },
         {
-          "t": 210.289,
-          "what": "start orderer4.example.com"
+          "t": 210.307,
+          "what": "start orderer3.example.com"
         },
         {
-          "t": 210.489,
+          "t": 210.669,
           "what": "start orderer.example.com"
         }
       ],
-      "leaderBefore": "orderer4.example.com",
-      "leaderAfter": "orderer3.example.com",
+      "leaderBefore": "orderer3.example.com",
+      "leaderAfter": "orderer2.example.com",
       "phases": {
-        "baselineTps": 93.8,
-        "followerDownTps": 98,
-        "afterLeaderStopTps": 85.6,
+        "baselineTps": 92.8,
+        "followerDownTps": 97.7,
+        "afterLeaderStopTps": 84.5,
         "twoDownCommits": 0,
-        "recoveredTps": 68.5
+        "recoveredTps": 80.8
       },
-      "leaderStopToNextCommitS": 10.2,
-      "restartToNextCommitS": 15.4,
-      "twoDownErrors": {
-        "count": 0,
+      "leaderStopToNextCommitS": 7.8,
+      "restartToNextCommitS": 4.9,
+      "twoDownProbes": {
+        "sent": 29,
+        "committed": 0,
+        "errorKinds": {
+          "other": 21,
+          "commit deadline exceeded": 8
+        },
         "quorumMessageSeen": false,
-        "sample": []
+        "sample": [
+          "14 UNAVAILABLE: no orderers could successfully process transaction | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup orderer.example.com on 127.0.0.11:53: no such host\" | rpc error: code = Unavailable desc = connection error: desc = \"tr",
+          "4 DEADLINE_EXCEEDED: Deadline exceeded after 8.002s,remote_addr=[::1]:7051"
+        ]
+      },
+      "probes": {
+        "sent": 300,
+        "committed": 257
       },
       "perSecond": [
         {
           "t": 0,
           "commits": 72,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 1,
-          "commits": 88,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 2,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 3,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 4,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 5,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 6,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 7,
-          "commits": 96,
-          "errors": 0
+          "commits": 80,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 8,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 9,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 10,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 11,
-          "commits": 96,
-          "errors": 0
+          "commits": 73,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 12,
-          "commits": 96,
-          "errors": 0
+          "commits": 87,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 13,
-          "commits": 96,
-          "errors": 0
+          "commits": 90,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 14,
-          "commits": 89,
-          "errors": 0
+          "commits": 94,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 15,
-          "commits": 95,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 16,
-          "commits": 88,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 17,
-          "commits": 72,
-          "errors": 0
+          "commits": 99,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 18,
-          "commits": 88,
-          "errors": 0
+          "commits": 95,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 19,
-          "commits": 88,
-          "errors": 0
+          "commits": 102,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 20,
-          "commits": 80,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 21,
-          "commits": 80,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 22,
-          "commits": 97,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 23,
-          "commits": 95,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 24,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 25,
-          "commits": 102,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 26,
-          "commits": 98,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 27,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 28,
-          "commits": 104,
-          "errors": 0
+          "commits": 80,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 29,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 30,
-          "commits": 96,
-          "errors": 0
+          "commits": 72,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 31,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 32,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 33,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 34,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 35,
           "commits": 104,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 36,
-          "commits": 92,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 37,
-          "commits": 100,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 38,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 39,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 40,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 41,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 42,
-          "commits": 96,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 43,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 44,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 45,
-          "commits": 98,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 46,
-          "commits": 102,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 47,
-          "commits": 111,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 48,
-          "commits": 97,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 49,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 50,
           "commits": 104,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 51,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 52,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 53,
-          "commits": 97,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 54,
-          "commits": 63,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 55,
-          "commits": 104,
-          "errors": 0
+          "commits": 101,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 56,
-          "commits": 96,
-          "errors": 0
+          "commits": 99,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 57,
-          "commits": 96,
-          "errors": 0
+          "commits": 92,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 58,
-          "commits": 96,
-          "errors": 0
+          "commits": 100,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 59,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 60,
-          "commits": 75,
-          "errors": 0
+          "commits": 80,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 61,
-          "commits": 100,
-          "errors": 0
+          "commits": 72,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 62,
-          "commits": 97,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 63,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 64,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 65,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 66,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 67,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 68,
           "commits": 104,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 69,
-          "commits": 88,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 70,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 71,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 72,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 73,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 74,
-          "commits": 103,
-          "errors": 0
+          "commits": 82,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 75,
-          "commits": 97,
-          "errors": 0
+          "commits": 78,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 76,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 77,
-          "commits": 96,
-          "errors": 0
+          "commits": 64,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 78,
-          "commits": 104,
-          "errors": 0
+          "commits": 48,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 79,
-          "commits": 81,
-          "errors": 0
+          "commits": 56,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 80,
-          "commits": 103,
-          "errors": 0
+          "commits": 48,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 81,
-          "commits": 96,
-          "errors": 0
+          "commits": 72,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 82,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 83,
-          "commits": 88,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 84,
-          "commits": 88,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 85,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 86,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 87,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 88,
-          "commits": 96,
-          "errors": 0
+          "commits": 80,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 89,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 90,
           "commits": 16,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 91,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 92,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 93,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 94,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 95,
           "commits": 0,
-          "errors": 8
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 96,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 97,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 98,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 99,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 100,
-          "commits": 25,
-          "errors": 8
+          "commits": 56,
+          "errors": 8,
+          "probeOk": true
         },
         {
           "t": 101,
-          "commits": 87,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 102,
-          "commits": 89,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 103,
-          "commits": 103,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 104,
-          "commits": 89,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 105,
-          "commits": 102,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 106,
-          "commits": 96,
-          "errors": 0
+          "commits": 93,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 107,
-          "commits": 97,
-          "errors": 0
+          "commits": 91,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 108,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 109,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 110,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 111,
           "commits": 104,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 112,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 113,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 114,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 115,
-          "commits": 96,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 116,
-          "commits": 96,
-          "errors": 0
+          "commits": 99,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 117,
-          "commits": 104,
-          "errors": 0
+          "commits": 101,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 118,
-          "commits": 96,
-          "errors": 0
+          "commits": 89,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 119,
-          "commits": 96,
-          "errors": 0
+          "commits": 103,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 120,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 121,
-          "commits": 96,
-          "errors": 0
+          "commits": 100,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 122,
-          "commits": 97,
-          "errors": 0
+          "commits": 100,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 123,
-          "commits": 103,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 124,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 125,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 126,
-          "commits": 96,
-          "errors": 0
+          "commits": 97,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 127,
-          "commits": 96,
-          "errors": 0
+          "commits": 103,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 128,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 129,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 130,
           "commits": 104,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 131,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 132,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 133,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 134,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 135,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 136,
-          "commits": 80,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 137,
-          "commits": 88,
-          "errors": 0
+          "commits": 89,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 138,
-          "commits": 96,
-          "errors": 0
+          "commits": 103,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 139,
-          "commits": 88,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 140,
-          "commits": 88,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 141,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 142,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 143,
-          "commits": 96,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 144,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 145,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 146,
-          "commits": 104,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 147,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 148,
-          "commits": 102,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 149,
-          "commits": 98,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 150,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 151,
-          "commits": 96,
-          "errors": 0
+          "commits": 89,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 152,
-          "commits": 96,
-          "errors": 0
+          "commits": 95,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 153,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 154,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 155,
-          "commits": 88,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 156,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 157,
-          "commits": 96,
-          "errors": 0
+          "commits": 82,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 158,
-          "commits": 93,
-          "errors": 0
+          "commits": 92,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 159,
-          "commits": 83,
-          "errors": 0
+          "commits": 98,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 160,
-          "commits": 89,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 161,
-          "commits": 95,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 162,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 163,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 164,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 165,
-          "commits": 104,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 166,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 167,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 168,
-          "commits": 96,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 169,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 170,
-          "commits": 96,
-          "errors": 0
+          "commits": 97,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 171,
-          "commits": 104,
-          "errors": 0
+          "commits": 95,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 172,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 173,
-          "commits": 104,
-          "errors": 0
+          "commits": 100,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 174,
-          "commits": 96,
-          "errors": 0
+          "commits": 92,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 175,
-          "commits": 96,
-          "errors": 0
+          "commits": 80,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 176,
-          "commits": 98,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 177,
-          "commits": 99,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 178,
-          "commits": 91,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 179,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 180,
-          "commits": 8,
-          "errors": 0
+          "commits": 16,
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 181,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 182,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 183,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 184,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 185,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 186,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 187,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 188,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 189,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 190,
           "commits": 0,
-          "errors": 0
+          "errors": 15,
+          "probeOk": false
         },
         {
           "t": 191,
           "commits": 0,
-          "errors": 0
+          "errors": 1,
+          "probeOk": false
         },
         {
           "t": 192,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 193,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 194,
           "commits": 0,
-          "errors": 0
+          "errors": 0,
+          "probeOk": false
         },
         {
           "t": 195,
           "commits": 0,
-          "errors": 0
+          "errors": 3,
+          "probeOk": false
         },
         {
           "t": 196,
           "commits": 0,
-          "errors": 0
+          "errors": 3,
+          "probeOk": false
         },
         {
           "t": 197,
           "commits": 0,
-          "errors": 0
+          "errors": 4,
+          "probeOk": false
         },
         {
           "t": 198,
           "commits": 0,
-          "errors": 0
+          "errors": 4,
+          "probeOk": false
         },
         {
           "t": 199,
           "commits": 0,
-          "errors": 0
+          "errors": 4,
+          "probeOk": false
         },
         {
           "t": 200,
           "commits": 0,
-          "errors": 0
+          "errors": 17,
+          "probeOk": false
         },
         {
           "t": 201,
           "commits": 0,
-          "errors": 0
+          "errors": 24,
+          "probeOk": false
         },
         {
           "t": 202,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 203,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 204,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 205,
           "commits": 0,
-          "errors": 0
+          "errors": 24,
+          "probeOk": false
         },
         {
           "t": 206,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 207,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 208,
           "commits": 0,
-          "errors": 0
+          "errors": 24,
+          "probeOk": false
         },
         {
           "t": 209,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 210,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 211,
           "commits": 0,
-          "errors": 0
+          "errors": 25,
+          "probeOk": false
         },
         {
           "t": 212,
           "commits": 0,
-          "errors": 0
+          "errors": 31,
+          "probeOk": false
         },
         {
           "t": 213,
           "commits": 0,
-          "errors": 0
+          "errors": 32,
+          "probeOk": false
         },
         {
           "t": 214,
           "commits": 0,
-          "errors": 0
+          "errors": 24,
+          "probeOk": false
         },
         {
           "t": 215,
-          "commits": 0,
-          "errors": 0
+          "commits": 48,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 216,
-          "commits": 0,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 217,
-          "commits": 0,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 218,
-          "commits": 0,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 219,
-          "commits": 0,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 220,
-          "commits": 0,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 221,
-          "commits": 0,
-          "errors": 0
+          "commits": 89,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 222,
-          "commits": 0,
-          "errors": 0
+          "commits": 103,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 223,
-          "commits": 0,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 224,
-          "commits": 0,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 225,
-          "commits": 8,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 226,
-          "commits": 80,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 227,
-          "commits": 91,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 228,
-          "commits": 101,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 229,
-          "commits": 96,
-          "errors": 0
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 230,
-          "commits": 96,
-          "errors": 0
+          "commits": 104,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 231,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 232,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 233,
-          "commits": 104,
-          "errors": 0
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 234,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 235,
-          "commits": 96,
-          "errors": 0
+          "commits": 98,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 236,
-          "commits": 96,
-          "errors": 0
+          "commits": 102,
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 237,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 238,
           "commits": 96,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
         },
         {
           "t": 239,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 240,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 241,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 242,
+          "commits": 98,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 243,
+          "commits": 94,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 244,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 245,
+          "commits": 82,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 246,
+          "commits": 94,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 247,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 248,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 249,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 250,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 251,
           "commits": 80,
-          "errors": 0
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 252,
+          "commits": 63,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 253,
+          "commits": 49,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 254,
+          "commits": 56,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 255,
+          "commits": 64,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 256,
+          "commits": 64,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 257,
+          "commits": 79,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 258,
+          "commits": 97,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 259,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 260,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 261,
+          "commits": 80,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 262,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 263,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 264,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 265,
+          "commits": 102,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 266,
+          "commits": 98,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 267,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 268,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 269,
+          "commits": 62,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 270,
+          "commits": 4,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 271,
+          "commits": 0,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 272,
+          "commits": 0,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 273,
+          "commits": 37,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 274,
+          "commits": 85,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 275,
+          "commits": 75,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 276,
+          "commits": 80,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 277,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 278,
+          "commits": 80,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 279,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 280,
+          "commits": 72,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 281,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 282,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 283,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 284,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 285,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 286,
+          "commits": 92,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 287,
+          "commits": 92,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 288,
+          "commits": 80,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 289,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 290,
+          "commits": 64,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 291,
+          "commits": 72,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 292,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 293,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 294,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 295,
+          "commits": 96,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 296,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 297,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 298,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
+        },
+        {
+          "t": 299,
+          "commits": 88,
+          "errors": 0,
+          "probeOk": true
         }
       ]
     }
   ],
   "run_manifest": {
-    "recorded_at": "2024-09-24T15:46:48-0400",
+    "recorded_at": "2024-09-25T11:06:27-0400",
     "host": {
       "chip": "Apple M1 Pro",
       "ram_gb": 16,
@@ -2514,18 +3737,18 @@
     },
     "load": {
       "loadavg": [
-        "6.12",
-        "6.63",
-        "7.71"
+        "10.04",
+        "12.94",
+        "19.30"
       ],
-      "cpu_usage": "CPU usage: 13.6% user, 13.6% sys, 73.86% idle",
-      "docker_containers_running": 17,
-      "swap": "total = 7168.00M  used = 6560.62M  free = 607.38M  (encrypted)"
+      "cpu_usage": "CPU usage: 31.23% user, 14.76% sys, 54.0% idle",
+      "docker_containers_running": 18,
+      "swap": "total = 12288.00M  used = 11324.25M  free = 963.75M  (encrypted)"
     },
     "extra": {
       "experiment": "faults",
       "device": "docker-desktop-arm64",
-      "workload": "Ping-x8"
+      "workload": "Ping-x8+probe"
     }
   }
 }
