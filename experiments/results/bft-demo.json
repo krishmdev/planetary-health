@@ -13,7 +13,8 @@
     "leaderStopToFirstCommitS": 41.4,
     "twoDownQuorumError": true,
     "twoDownError": "14 UNAVAILABLE: insufficient number of orderers could successfully process transaction to satisfy quorum requirement | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup orderer.example.com on 127.0.0.11:53: no such host\" | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup ord",
-    "restartToFirstCommitS": 24.2
+    "restartToFirstCommitS": 24.2,
+    "followerCaughtUp": false
   },
   "steps": [
     {
@@ -29,7 +30,7 @@
       "block": "86"
     },
     {
-      "step": "follower restarted and caught up, 4 of 4 up",
+      "step": "follower restarted, 4 of 4 up, not caught up after 122.6 s",
       "outcome": "committed",
       "ms": 938,
       "block": "87"
