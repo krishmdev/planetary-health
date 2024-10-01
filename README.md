@@ -163,8 +163,8 @@ measurements support relative comparisons, not absolute performance claims.
 | E2 throughput | 8 clients, BFT vs Raft | TPS; commit p50 | 101.0 vs 85.1 TPS; 41 vs 72 ms |
 | E2 throughput | 32 clients, BFT vs Raft | TPS; commit p50 | 160.3 vs 239.7 TPS; 103 vs 60 ms |
 | E2 throughput | 64 clients, BFT vs Raft | TPS; commit p50 | 146.0 vs 253.2 TPS; 203 vs 108 ms |
-| E3 faults | SmartBFT: follower down / leader down / 2 of 4 down / restart | TPS; next commit; commits; recovery | 125.5 TPS; 21.7 s; 0; after restart: 61.8 s |
-| E3 faults | etcdraft: follower down / leader down / 2 of 4 down / restart | TPS; next commit; commits; recovery | 98.0 TPS; 10.2 s; 0; after restart: 15.4 s |
+| E3 faults | SmartBFT: follower down / leader down / 2 of 4 down / restart | TPS; next commit; commits; recovery | 125.4 TPS; 21.6 s; 0 (quorum error); after restart: 31.1 s |
+| E3 faults | etcdraft: follower down / leader down / 2 of 4 down / restart | TPS; next commit; commits; recovery | 97.7 TPS; 7.8 s; 0; after restart: 4.9 s |
 | E4 idle cost | always-on, 600s × 3 repeats | CPU-s; GiB·s (saved); per repeat; saved excl. repeat 1 | 39.1; 301.7 (0.0%); 342.2 / 282.0 / 281.0; 0.0% |
 | E4 idle cost | s2z-api, 600s × 3 repeats | CPU-s; GiB·s (saved); per repeat; saved excl. repeat 1 | 40.6; 221.9 (26.5%); 251.5 / 207.6 / 206.7; 26.4% |
 | E4 idle cost | s2z-full, 600s × 3 repeats | CPU-s; GiB·s (saved); per repeat; saved excl. repeat 1 | 26.5; 158.8 (47.4%); 175.7 / 150.5 / 150.3; 46.6% |
@@ -174,10 +174,10 @@ Run conditions (from the manifests):
 
 | Result file | Recorded | Power | Swap in use | Load avg (1/5/15 min) |
 |---|---|---|---|---|
-| e2e.json | 2024-09-24T19:27:20.838Z | not recorded | not recorded | not recorded |
-| bft-demo.json | 2024-09-24T15:29:36-0400 | AC Power | 6781.19M | 5.31 / 8.57 / 9.11 |
+| e2e.json | 2024-09-25T14:52:08.473Z | not recorded | not recorded | not recorded |
+| bft-demo.json | 2024-09-25T10:55:25-0400 | AC Power | 10616.12M | 14.41 / 39.54 / 30.45 |
 | throughput.json | 2024-09-24T15:37:33-0400 | AC Power | 5802.31M | 13.70 / 9.91 / 9.24 |
-| faults.json | 2024-09-24T15:46:48-0400 | AC Power | 6560.62M | 6.12 / 6.63 / 7.71 |
+| faults.json | 2024-09-25T11:06:27-0400 | AC Power | 11324.25M | 10.04 / 12.94 / 19.30 |
 | coldstart.json | 2024-09-24T21:29:54-0400 | Battery Power | 8471.25M | 6.55 / 33.07 / 70.01 |
 | idle.json | 2024-09-24T23:04:16-0400 | Battery Power | 10868.00M | 4.99 / 5.17 / 4.02 |
 
@@ -203,13 +203,20 @@ The runs show:
   `BatchSize.MaxMessageCount` (`orderer/consensus/smartbft/util.go` in v3.1.5). The levels were
   interleaved, alternating which channel ran first.
 - **Faults (E3).** Both channels kept committing with one follower down. After the leader was
-  stopped, both stalled until a new leader took over, and neither committed with two of four
-  orderers down. After everything was restarted, Raft resumed within the window, but SmartBFT had
-  not committed again by the end of the 240 s run. E3's error log did not capture the gateway's
-  "insufficient number of orderers" quorum message (its errors with two orderers down were
-  other unavailable/timeout errors). The separate [BFT demo](docs/bft-demo.md) did get that exact
-  message. The demo's leader-failover time is also longer than E3's; both runs are in the
-  results files.
+  stopped, both stalled until a new leader took over; Raft recovered faster than SmartBFT. With
+  two of four orderers down neither committed. For BFT, every probe sent in that window got the
+  gateway's "insufficient number of orderers" quorum error. For Raft the errors were "no
+  orderers could process" and commit deadlines. After everything restarted, both channels
+  committed again within the 90 s recovery window, Raft sooner. Recovery times come from an
+  independent probe that sends a fresh `Ping` every second with an 8 s commit deadline. That
+  matters because the closed-loop workers can all sit waiting on commits that never happen.
+- **Failover time depends on the conditions.** The [BFT demo](docs/bft-demo.md) runs on an
+  idle channel, and its leader failover took longer than E3's, which runs under steady load.
+  Our hypothesis, not confirmed by the orderer logs we captured, is that under load a stalled
+  leader is noticed through request-forwarding and complaint timeouts, while an idle channel has
+  to wait for the leader-heartbeat timeout. In the demo the restarted follower also stayed one
+  block behind the others for the whole wait before the leader was stopped (heights are in
+  `bft-demo.json`).
 - **Idle cost (E4).** Scaling the APIs to zero cut idle memory-time by about a quarter, and scaling
   peers too cut it by almost half. The always-on orderers are a fixed floor in every mode. CPU
   barely moved in api mode (the idle APIs used little CPU to begin with). In s2z-full the peers
@@ -218,6 +225,7 @@ The runs show:
   and Docker Desktop's VM overhead isn't counted.
 
 ![Doctor view](docs/screenshots/doctor-desktop.png)
+<img src="docs/screenshots/breakglass-mobile.png" alt="Break-glass on a phone" width="260">
 ![Admin view](docs/screenshots/admin-desktop.png)
 
 ## Testing
@@ -280,8 +288,6 @@ hospital's gateway. All four orderers are run by one organization on one host.
   14 (see the run-conditions table). Other agents' workloads shared the machine. Absolute
   latencies and CPU numbers would be lower on an idle host; the comparisons within each run are
   the point.
-- Mobile screenshots aren't committed: the last run showed a wrapping checkbox and a crowded top
-  bar. The CSS is fixed but the phone layout wasn't re-shot on the live stack.
 
 ## Related work
 

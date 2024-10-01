@@ -36,8 +36,8 @@ Recovery times are from the 1 s probe: the time until a freshly sent Ping commit
 
 | Consensus | baseline TPS | follower down TPS | leader stop → next commit | after leader stop TPS | commits with 2 down | 2-down probe errors | restart → next commit | recovered TPS |
 |---|---|---|---|---|---|---|---|---|
-| SmartBFT | 114.5 | 125.5 | 21.7 s | 92.8 | 0 | none | 61.8 s | 0.0 |
-| etcdraft | 93.8 | 98.0 | 10.2 s | 85.6 | 0 | none | 15.4 s | 68.5 |
+| SmartBFT | 126.0 | 125.4 | 21.6 s | 92.6 | 0 | quorum (insufficient number of orderers): 29 | 31.1 s | 100.1 |
+| etcdraft | 92.8 | 97.7 | 7.8 s | 84.5 | 0 | other: 21; commit deadline exceeded: 8 | 4.9 s | 80.8 |
 
 ## E4 idle cost
 
@@ -51,7 +51,7 @@ In s2z-full the APIs stop after 60 s and the peers after about 300 s, so the pee
 
 ## e2e
 
-Run 2024-09-24T19:27:20.838Z: 27 passed, 0 failed.
+Run 2024-09-25T14:52:08.473Z: 27 passed, 0 failed.
 
 - PASS login: Org2 token rejected by Org1 gateway (401)
 - PASS login: tampered token rejected (401)
@@ -87,9 +87,9 @@ From each file's run manifest. Other agents' workloads were running on the same 
 
 | Result file | Recorded | Power | Swap in use | Load avg (1/5/15 min) |
 |---|---|---|---|---|
-| e2e.json | 2024-09-24T19:27:20.838Z | not recorded | not recorded | not recorded |
-| bft-demo.json | 2024-09-24T15:29:36-0400 | AC Power | 6781.19M | 5.31 / 8.57 / 9.11 |
+| e2e.json | 2024-09-25T14:52:08.473Z | not recorded | not recorded | not recorded |
+| bft-demo.json | 2024-09-25T10:55:25-0400 | AC Power | 10616.12M | 14.41 / 39.54 / 30.45 |
 | throughput.json | 2024-09-24T15:37:33-0400 | AC Power | 5802.31M | 13.70 / 9.91 / 9.24 |
-| faults.json | 2024-09-24T15:46:48-0400 | AC Power | 6560.62M | 6.12 / 6.63 / 7.71 |
+| faults.json | 2024-09-25T11:06:27-0400 | AC Power | 11324.25M | 10.04 / 12.94 / 19.30 |
 | coldstart.json | 2024-09-24T21:29:54-0400 | Battery Power | 8471.25M | 6.55 / 33.07 / 70.01 |
 | idle.json | 2024-09-24T23:04:16-0400 | Battery Power | 10868.00M | 4.99 / 5.17 / 4.02 |
