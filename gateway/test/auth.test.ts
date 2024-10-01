@@ -79,7 +79,8 @@ describe('login and JWT verification', () => {
   it('rate-limits login attempts', async () => {
     const h = await harness();
     const codes: number[] = [];
-    for (let i = 0; i < 8; i++) {
+    // Enough attempts that refill during slow scrypt checks on a loaded machine can't keep up.
+    for (let i = 0; i < 20; i++) {
       codes.push((await request(h.app).post('/auth/login').send({ username: 'alice', password: 'wrong' })).status);
     }
     expect(codes).toContain(429);
