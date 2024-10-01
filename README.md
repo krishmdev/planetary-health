@@ -201,7 +201,10 @@ The runs show:
   at 1 and 8 clients. etcdraft pulled ahead at 32 and 64 clients, with lower commit latency. Both
   channels cut blocks at 10 messages; SmartBFT takes `RequestBatchMaxCount` from
   `BatchSize.MaxMessageCount` (`orderer/consensus/smartbft/util.go` in v3.1.5). The levels were
-  interleaved, alternating which channel ran first.
+  interleaved, alternating which channel ran first. The BFT advantage at low concurrency comes
+  from the batch timers. With one client a Raft block waits out the 50 ms `BatchTimeout` (its
+  fastest commit in the run was above that), while SmartBFT proposes as soon as the leader has
+  a request. Each level is a single 45 s run on a loaded host, so small differences are noise.
 - **Faults (E3).** Both channels kept committing with one follower down. After the leader was
   stopped, both stalled until a new leader took over; Raft recovered faster than SmartBFT. With
   two of four orderers down neither committed. For BFT, every probe sent in that window got the
@@ -278,6 +281,8 @@ hospital's gateway. All four orderers are run by one organization on one host.
 - Nothing is deployed to AWS or Fly. [docs/serverless-deployment.md](docs/serverless-deployment.md)
   is a paper mapping.
 - The activator holds the Docker socket, which is root-equivalent on the host.
+- If registering a user fails after the CA enrollment, the gateway revokes the new identity.
+  Fabric CA keeps revoked registrations, so that username can't be reused.
 - Once, a BFT channel that had been idle for about four hours stopped committing (height stuck;
   orderer cluster sends failing with EOF) and a restart of the orderers didn't fix it. A fresh
   network didn't reproduce it, and the cause was not found.
