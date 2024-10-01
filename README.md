@@ -250,7 +250,7 @@ The runs show:
   (403 after catch-up, 503 when kept paused), the `FRESHNESS=off` negative control, and CRL
   revocation. The replica test pauses `peer1.org1`, commits 60 filler transactions and then the
   revocation, so the replica has real work to do after unpausing. Its catch-up is measured and
-  stored as `replicaCatchUpMs` in `experiments/results/e2e.json`, tens of milliseconds in the
+  stored as `replicaCatchUpMs` in `experiments/results/e2e.json`: under a second (891 ms) in the
   committed run. In earlier local runs whose logs weren't kept it took longer than 5 s, so the
   replica and control gateways use a 15 s freshness timeout. The org gateways keep the 5 s
   default.
@@ -286,7 +286,7 @@ hospital's gateway. All four orderers are run by one organization on one host.
 - Once, a BFT channel that had been idle for about four hours stopped committing (height stuck;
   orderer cluster sends failing with EOF) and a restart of the orderers didn't fix it. A fresh
   network didn't reproduce it, and the cause was not found.
-- The replica catch-up time after a pause varied between runs: tens of milliseconds in the
+- The replica catch-up time after a pause varied between runs: under a second (891 ms) in the
   committed run, more than 5 s in earlier runs that weren't kept. That is why the e2e's replica
   gateways use a 15 s freshness timeout.
 - E1 and E4 ran on battery power with 8–11 GB of swap in use, and E2 with a load average near
