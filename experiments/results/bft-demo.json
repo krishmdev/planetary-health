@@ -2,58 +2,66 @@
   "experiment": "bft-demo",
   "summary": {
     "leaderBefore": "orderer.example.com",
-    "leaderAfter": "orderer4.example.com",
-    "leaderStopToFirstCommitS": 81.5,
+    "leaderAfter": "orderer3.example.com",
+    "followerCatchUpS": 122.6,
+    "heightsBeforeLeaderStop": [
+      87,
+      86,
+      87,
+      87
+    ],
+    "leaderStopToFirstCommitS": 41.4,
     "twoDownQuorumError": true,
     "twoDownError": "14 UNAVAILABLE: insufficient number of orderers could successfully process transaction to satisfy quorum requirement | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup orderer.example.com on 127.0.0.11:53: no such host\" | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup ord",
-    "restartToFirstCommitS": 44.2
+    "restartToFirstCommitS": 24.2
   },
   "steps": [
     {
       "step": "baseline, 4 of 4 orderers up",
       "outcome": "committed",
-      "ms": 111,
-      "block": "76"
+      "ms": 776,
+      "block": "85"
     },
     {
       "step": "follower orderer2.example.com stopped, 3 of 4 up",
       "outcome": "committed",
-      "ms": 62,
-      "block": "77"
+      "ms": 520,
+      "block": "86"
     },
     {
-      "step": "follower restarted, 4 of 4 up",
+      "step": "follower restarted and caught up, 4 of 4 up",
       "outcome": "committed",
-      "ms": 92,
-      "block": "78"
+      "ms": 938,
+      "block": "87"
     },
     {
       "step": "leader orderer.example.com stopped, attempt 1",
       "outcome": "committed",
-      "ms": 81514,
-      "block": "79"
+      "ms": 41449,
+      "block": "88"
     },
     {
       "step": "second orderer orderer2.example.com stopped, 2 of 4 up",
       "outcome": "failed",
-      "ms": 53,
+      "ms": 84,
       "error": "14 UNAVAILABLE: insufficient number of orderers could successfully process transaction to satisfy quorum requirement | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup orderer.example.com on 127.0.0.11:53: no such host\" | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup ord"
     },
     {
       "step": "all restarted, attempt 1",
       "outcome": "failed",
-      "ms": 21,
-      "error": "14 UNAVAILABLE: insufficient number of orderers could successfully process transaction to satisfy quorum requirement | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup orderer.example.com on 127.0.0.11:53: no such host\" | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup ord"
+      "ms": 27,
+      "error": "14 UNAVAILABLE: insufficient number of orderers could successfully process transaction to satisfy quorum requirement | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup orderer2.example.com on 127.0.0.11:53: no such host\" | rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp: lookup or"
     },
     {
       "step": "all restarted, attempt 2",
       "outcome": "committed",
-      "ms": 42140,
-      "block": "80"
+      "ms": 22154,
+      "block": "89"
     }
   ],
+  "viewChangeLog": [],
   "run_manifest": {
-    "recorded_at": "2024-09-24T15:29:36-0400",
+    "recorded_at": "2024-09-25T10:55:25-0400",
     "host": {
       "chip": "Apple M1 Pro",
       "ram_gb": 16,
@@ -67,13 +75,13 @@
     },
     "load": {
       "loadavg": [
-        "5.31",
-        "8.57",
-        "9.11"
+        "14.41",
+        "39.54",
+        "30.45"
       ],
-      "cpu_usage": "CPU usage: 22.62% user, 14.42% sys, 62.95% idle",
-      "docker_containers_running": 17,
-      "swap": "total = 8192.00M  used = 6781.19M  free = 1410.81M  (encrypted)"
+      "cpu_usage": "CPU usage: 26.46% user, 18.94% sys, 54.58% idle",
+      "docker_containers_running": 18,
+      "swap": "total = 11264.00M  used = 10616.12M  free = 647.88M  (encrypted)"
     },
     "extra": {
       "experiment": "bft-demo",
