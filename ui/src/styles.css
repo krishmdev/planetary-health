@@ -265,3 +265,4 @@ label.row input { flex: none; }
   .brand strong { white-space: nowrap; }
   .who > span { max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+.who button { white-space: nowrap; flex: none; }
