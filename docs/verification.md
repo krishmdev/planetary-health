@@ -23,9 +23,10 @@ Fabric network up, run the phases, write results, tear down.
 | Date (local) | Phases | Result files | Outcome |
 |---|---|---|---|
 | 2024-09-23 | first-hour spike (`network/spike.sh`) | none | stock asset-transfer-basic on BFT committed with one orderer stopped |
-| 2024-09-24 | e2e, bft demo, E2, E3 | `e2e.json`, `bft-demo.json`, `throughput.json`, `faults.json` (E3 later superseded) | e2e 27/27; see README |
+| 2024-09-24 | e2e, bft demo, E2, E3 | `throughput.json` kept; the e2e, bft demo and E3 files were superseded on 2024-09-25 | e2e 27/27 |
 | 2024-09-24 | app tier, E1, screenshots | `coldstart.json`, desktop screenshots | all trials HTTP 200 |
 | 2024-09-24 | app tier, E4 (600 s × 3) | `idle.json` | see README |
+| 2024-09-25 | e2e, bft demo, E3 (probe), app tier, screenshots | `e2e.json`, `bft-demo.json`, `faults.json`, desktop + mobile screenshots | e2e 27/27 with the freshness wait asserted; BFT quorum error captured by the E3 probe |
 
 Earlier live runs on 2024-09-23 and 2024-09-24 found and fixed live-only bugs:
 - contract-api's return schema treated `omitempty` fields as required;
@@ -39,4 +40,4 @@ Their result files were not kept.
 
 - Any cloud deployment (AWS, Fly): documentation only.
 - An egress-blocked runtime for the Fabric stack: only the unit tests are shown to need no network.
-- Mobile screenshots before 2024-09-25 (layout fixes were checked with the design reviewer's mocked-API Playwright scripts at 390 px; every page fit the viewport width).
+- The orderer log capture in the bft demo matched no view-change lines, so the failover explanation in the README stays a hypothesis.
