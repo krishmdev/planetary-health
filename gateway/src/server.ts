@@ -37,6 +37,7 @@ const app = createApp({
   ca,
   fetcher: httpFetch,
   log,
+  trustProxy: process.env.TRUST_PROXY || false,
 });
 
 phi.startOutbox();

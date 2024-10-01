@@ -30,6 +30,7 @@ export interface AppDeps {
   fetcher: Fetcher;
   log: Logger;
   probeIdentity?: string;
+  trustProxy?: string | false;
 }
 
 class BadRequest extends Error {}
@@ -64,9 +65,9 @@ const Id = z.string().regex(/^[A-Za-z0-9_-]{3,40}$/);
 export function createApp(d: AppDeps): express.Express {
   const app = express();
   app.disable('x-powered-by');
-  // Requests arrive through the activator (and nginx for the UI); take the client address from
-  // X-Forwarded-For only when the hop is on loopback or a private network.
-  app.set('trust proxy', 'loopback, uniquelocal');
+  // Behind the activator (compose sets TRUST_PROXY) the client address comes from
+  // X-Forwarded-For; reached directly, the header is ignored so it can't dodge the login limit.
+  app.set('trust proxy', d.trustProxy ?? false);
   app.use(express.json({ limit: '128kb' }));
 
   const wrap =

@@ -84,6 +84,13 @@ describe('login and JWT verification', () => {
       codes.push((await request(h.app).post('/auth/login').send({ username: 'alice', password: 'wrong' })).status);
     }
     expect(codes).toContain(429);
+    // Reached directly (no trusted proxy), a spoofed X-Forwarded-For doesn't buy fresh buckets.
+    const h2 = await harness();
+    const spoofed: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      spoofed.push((await request(h2.app).post('/auth/login').set('X-Forwarded-For', `10.0.0.${i}`).send({ username: 'alice', password: 'wrong' })).status);
+    }
+    expect(spoofed).toContain(429);
     const rl = new RateLimiter(2, 1);
     expect(rl.take('x', 0)).toBe(true);
     expect(rl.take('x', 0)).toBe(true);

@@ -18,6 +18,8 @@ services:
     environment:
       ORG: org1
       PORT: "8080"
+      # Only reachable through the activator on the Docker network.
+      TRUST_PROXY: uniquelocal
       PEER_ENDPOINT: peer0.org1.example.com:7051
       PEER_OPS: http://peer0.org1.example.com:9444
       PEER_OPS_ALL: peer0.org1=http://peer0.org1.example.com:9444,peer0.org2=http://peer0.org2.example.com:9445
@@ -43,6 +45,7 @@ services:
     environment:
       ORG: org2
       PORT: "8080"
+      TRUST_PROXY: uniquelocal
       PEER_ENDPOINT: peer0.org2.example.com:9051
       PEER_OPS: http://peer0.org2.example.com:9445
       PEER_OPS_ALL: peer0.org1=http://peer0.org1.example.com:9444,peer0.org2=http://peer0.org2.example.com:9445

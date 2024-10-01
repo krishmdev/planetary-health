@@ -116,7 +116,7 @@ gateway sets it, which is inside the trust boundary above.
   - After unpausing, the replica, a BFT deliver client, must re-establish its block and header
     sources and commit every filler block. In one run that took longer than 5 s, so the e2e's
     replica and control gateways use 15 s. The measured catch-up is stored with each run
-    (`replicaCatchUpMs`, `heightAtRead`).
+    (`replicaCatchUpMs`, `heightAtUnpause`).
   - A `FRESHNESS=off` gateway is the negative control. It must serve the revoked read while
     the replica is still behind, which shows the positive test is not vacuous.
 - If the read peer doesn't hold the private data yet (dissemination or reconciliation pending),
@@ -150,7 +150,10 @@ expensive wake-up. Mitigations:
   is answered by the activator itself.
 - The activator's admin API (scale-down, mode) requires an `X-Activator-Token`. It and the API
   ports are published on 127.0.0.1 only. The login rate limit keys on X-Forwarded-For only when
-  the request comes from a configured trusted proxy (nginx).
+  the request comes from a configured trusted proxy (nginx). The gateway itself only honors
+  X-Forwarded-For when `TRUST_PROXY` is set, which compose does because the gateway is reachable
+  only through the activator. Gateways started directly on the host (`make gateways-host`)
+  key their login limit on the socket address, so a spoofed header can't dodge it.
 - A wake that doesn't reach readiness within 90 s returns 503 with Retry-After. It never
   forwards a request to a half-ready endorsement path.
 
