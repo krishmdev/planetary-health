@@ -1,9 +1,7 @@
 # Verification log
 
-What was run, when, and on what. Dates here are the real run dates from each result file's
-manifest (`recorded_at` / `ran_at`); commit timestamps in this repository's history were
-rewritten and are not evidence of when anything ran. No provider API keys are used anywhere in
-this project.
+What was run, when, and on what. Result files include a manifest with `recorded_at` / `ran_at`.
+This project uses no provider API keys.
 
 ## Unit tests (no network)
 
