@@ -8,8 +8,7 @@ for emergencies, and metadata-only access for administrators. Both hospitals' pe
 policy again on every write.
 
 A Go "activator" in front of each hospital's API scales the API, and optionally its peers, to
-zero when idle. The project tests Rana, Lu and Singh's argument (IEEE CCCI 2024, see
-[Related work](#related-work)) that serverless-style deployment can cut the cost of a blockchain
+zero when idle. The project tests that serverless-style deployment can cut the cost of a blockchain
 EHR. Everything runs locally in Docker; nothing is deployed elsewhere.
 
 ## Architecture
